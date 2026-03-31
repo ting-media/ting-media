@@ -1,0 +1,15 @@
+{
+  "name": "TING MEDIA",
+  "version": 2,
+  "buildCommand": "echo 'Building...'",
+  "devCommand": "python -m http.server 3000",
+  "env": {
+    "SITE_NAME": "TING MEDIA"
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
