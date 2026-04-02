@@ -66,6 +66,21 @@ html {
     color: #FFA500;
 }
 
+.nav-links a.admin-link {
+    background: linear-gradient(135deg, #FFA500, #FF8C00);
+    color: #0f1b2e;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.nav-links a.admin-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(255, 165, 0, 0.3);
+    color: #0f1b2e;
+}
+
 /* Hero Section */
 .hero {
     position: relative;

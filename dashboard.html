@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TING MEDIA - מערכת ניהול</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Heebo', 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f1b2e;
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .dashboard-header {
+            background: rgba(15, 27, 46, 0.98);
+            border-bottom: 1px solid rgba(255, 165, 0, 0.3);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+            transition: opacity 0.3s ease;
+        }
+
+        .header-left:hover {
+            opacity: 0.8;
+        }
+
+        .header-logo {
+            font-size: 26px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #FFA500, #FF8C00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-divider {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 165, 0, 0.3);
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+            letter-spacing: -0.5px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+        }
+
+        .user-name {
+            font-size: 14px;
+            color: white;
+            font-weight: 600;
+        }
+
+        .user-role {
+            font-size: 12px;
+            color: #FFA500;
+            font-weight: 500;
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            background: rgba(220, 38, 38, 0.15);
+            border: 1px solid rgba(220, 38, 38, 0.4);
+            color: #fca5a5;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            font-family: inherit;
+        }
+
+        .logout-btn:hover {
+            background: rgba(220, 38, 38, 0.25);
+            border-color: rgba(220, 38, 38, 0.6);
+        }
+
+        /* App Container - Full Screen */
+        #appContainer {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            background: #0f1b2e;
+        }
+
+        .app-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #0f1b2e;
+        }
+
+        .app-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            gap: 20px;
+            background: #0f1b2e;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 165, 0, 0.2);
+            border-top-color: #FFA500;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #cbd5e1;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .loading-subtext {
+            color: #64748b;
+            font-size: 13px;
+            margin-top: 10px;
+            max-width: 400px;
+            line-height: 1.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard-header {
+                padding: 12px 16px;
+            }
+
+            .header-left {
+                gap: 12px;
+            }
+
+            .header-logo {
+                font-size: 22px;
+            }
+
+            .header-title {
+                font-size: 16px;
+            }
+
+            .header-right {
+                gap: 12px;
+            }
+
+            .user-info {
+                display: none;
+            }
+
+            .logout-btn {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="dashboard-header">
+        <div class="header-left" onclick="goHome()">
+            <div class="header-logo">📊</div>
+            <div class="header-divider"></div>
+            <div class="header-title">TING MEDIA</div>
+        </div>
+        <div class="header-right">
+            <div class="user-info">
+                <div class="user-name" id="userName">אמית</div>
+                <div class="user-role">👑 מנהל</div>
+            </div>
+            <button class="logout-btn" onclick="logout()">🚪 התנתקות</button>
+        </div>
+    </div>
+
+    <!-- App Container -->
+    <div id="appContainer" class="app-loading">
+        <div class="spinner"></div>
+        <div class="loading-text">טוען את מערכת הניהול...</div>
+        <div class="loading-subtext">ודא שהפעלת את האפליקציה עם:<br><code style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px;">npm run dev</code></div>
+    </div>
+
+    <!-- iframe for React app -->
+    <iframe id="appIframe" class="app-iframe" style="display: none;"></iframe>
+
+    <script>
+        // Check authentication
+        function checkAuth() {
+            const session = localStorage.getItem('tingAdminSession');
+            if (!session) {
+                window.location.href = 'login.html';
+                return false;
+            }
+
+            try {
+                const sessionData = JSON.parse(session);
+                document.getElementById('userName').textContent = sessionData.username || 'משתמש';
+                return true;
+            } catch (e) {
+                console.error('Invalid session data');
+                localStorage.removeItem('tingAdminSession');
+                window.location.href = 'login.html';
+                return false;
+            }
+        }
+
+        // Load React app
+        function loadApp() {
+            const appUrl = 'http://localhost:5173';
+            const iframe = document.getElementById('appIframe');
+            const container = document.getElementById('appContainer');
+
+            // Try to load the app
+            iframe.src = appUrl;
+
+            // When iframe loads successfully
+            iframe.onload = function() {
+                container.innerHTML = '';
+                container.style.display = 'none';
+                iframe.style.display = 'block';
+                iframe.classList.add('app-iframe');
+            };
+
+            // If app doesn't load after 8 seconds, show error
+            setTimeout(() => {
+                if (iframe.style.display === 'none') {
+                    container.innerHTML = `
+                        <div style="text-align: center; gap: 20px; display: flex; flex-direction: column;">
+                            <div style="font-size: 60px;">⚠️</div>
+                            <div style="font-size: 18px; color: #fca5a5;">לא ניתן להתחבר לאפליקציה</div>
+                            <div style="color: #cbd5e1; max-width: 500px; line-height: 1.6;">
+                                <p style="margin-bottom: 15px;">האפליקציה לא פועלת כרגע.</p>
+                                <p style="margin-bottom: 15px;"><strong>בכדי להפעיל את המערכת:</strong></p>
+                                <ol style="text-align: right; display: inline-block;">
+                                    <li style="margin-bottom: 8px;">פתח Terminal / PowerShell</li>
+                                    <li style="margin-bottom: 8px;">עבור לתיקיה: <code style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px;">cd "H:/פיתוח תוכן/ting-app/ting-app"</code></li>
+                                    <li style="margin-bottom: 8px;">הריץ: <code style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px;">npm run dev</code></li>
+                                    <li>תדלף את הדף הזה (F5)</li>
+                                </ol>
+                            </div>
+                            <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: linear-gradient(135deg, #FFA500, #FF8C00); color: #0f1b2e; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: inherit;">🔄 נסה שוב</button>
+                        </div>
+                    `;
+                }
+            }, 8000);
+        }
+
+        // Go home
+        function goHome() {
+            if (confirm('חזרה לאתר הבית?')) {
+                window.location.href = 'index.html';
+            }
+        }
+
+        // Logout
+        function logout() {
+            if (confirm('האם בטוח שברצונך להתנתק?')) {
+                localStorage.removeItem('tingAdminSession');
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('load', function() {
+            if (checkAuth()) {
+                // Redirect to admin panel instead
+                window.location.href = 'admin.html';
+            }
+        });
+
+        // Session timeout check
+        setInterval(() => {
+            const session = localStorage.getItem('tingAdminSession');
+            if (!session) {
+                window.location.href = 'login.html';
+            }
+        }, 60000); // Check every minute
+    </script>
+</body>
+</html>

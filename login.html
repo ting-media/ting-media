@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TING MEDIA - כניסה למערכת</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Heebo', 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f1b2e 0%, #1a2f4a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Starfield background animation */
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        .stars {
+            position: fixed;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+
+        /* Login container */
+        .login-container {
+            background: rgba(15, 27, 46, 0.95);
+            border: 1px solid rgba(255, 165, 0, 0.3);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 165, 0, 0.1);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .login-logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #FFA500, #FF8C00);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .login-header h1 {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .login-header p {
+            color: #FFA500;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #cbd5e1;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            background: rgba(51, 65, 85, 0.8);
+            border: 1px solid rgba(255, 165, 0, 0.2);
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            background: rgba(51, 65, 85, 1);
+            border-color: #FFA500;
+            box-shadow: 0 0 10px rgba(255, 165, 0, 0.2);
+        }
+
+        .form-group input::placeholder {
+            color: rgba(203, 213, 225, 0.5);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #FFA500, #FF8C00);
+            border: none;
+            border-radius: 10px;
+            color: #0f1b2e;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(255, 165, 0, 0.3);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-message {
+            background: rgba(220, 38, 38, 0.15);
+            border: 1px solid rgba(220, 38, 38, 0.5);
+            color: #fca5a5;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .footer-text {
+            text-align: center;
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 165, 0, 0.1);
+        }
+
+        @media (max-width: 500px) {
+            .login-container {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <div class="login-logo">📊</div>
+            <h1>TING MEDIA</h1>
+            <p>מערכת ניהול עסקי</p>
+        </div>
+
+        <div class="error-message" id="errorMsg"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">אימייל</label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="amit@tingil.co"
+                    required
+                    autocomplete="email"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="password">סיסמא</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="••••••••"
+                    required
+                    autocomplete="current-password"
+                >
+            </div>
+
+            <button type="submit" class="submit-btn" id="submitBtn">כניסה למערכת</button>
+        </form>
+
+        <div class="footer-text">
+            <p>✅ אישור:</p>
+            <p>אימייל: <strong>amit@tingil.co</strong></p>
+            <p>סיסמא: <strong>AMIT1144</strong></p>
+        </div>
+    </div>
+
+    <script>
+        // Create starfield background
+        function createStarfield() {
+            const starsCount = 50;
+            for (let i = 0; i < starsCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'stars';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 3 + 's';
+                document.body.appendChild(star);
+            }
+        }
+        createStarfield();
+
+        // Handle login
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('errorMsg');
+            const submitBtn = document.getElementById('submitBtn');
+
+            errorMsg.classList.remove('show');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'מתחבר...';
+
+            // Simulate authentication delay
+            setTimeout(() => {
+                // Hardcoded admin credentials
+                if (email === 'amit@tingil.co' && password === 'AMIT1144') {
+                    // Create session
+                    const sessionData = {
+                        email: email,
+                        role: 'admin',
+                        loginTime: new Date().toISOString(),
+                        username: 'אמית'
+                    };
+                    localStorage.setItem('tingAdminSession', JSON.stringify(sessionData));
+
+                    // Redirect to dashboard
+                    window.location.href = 'dashboard.html';
+                } else {
+                    errorMsg.textContent = '❌ אימייל או סיסמא שגויים';
+                    errorMsg.classList.add('show');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'כניסה למערכת';
+                }
+            }, 500);
+        });
+
+        // Auto-fill if coming from main page
+        window.addEventListener('load', function() {
+            // Check if already logged in
+            const session = localStorage.getItem('tingAdminSession');
+            if (session) {
+                window.location.href = 'dashboard.html';
+            }
+        });
+    </script>
+</body>
+</html>
