@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>הגדרות | מחולל קרוסלות</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container-fluid px-4">
+    <a href="/" class="btn btn-outline-light btn-sm">← חזרה לדשבורד</a>
+    <span class="navbar-brand">⚙️ הגדרות מערכת</span>
+  </div>
+</nav>
+
+<div class="container py-4" style="max-width: 680px;">
+
+  {% if saved %}
+  <div class="alert alert-success mb-4">✓ ההגדרות נשמרו בהצלחה</div>
+  {% endif %}
+
+  <form method="POST" action="/settings" autocomplete="off">
+
+    <!-- Scanning settings -->
+    <div class="card mb-4">
+      <div class="card-header">📡 הגדרות סריקה</div>
+      <div class="card-body">
+
+        <div class="mb-4">
+          <label class="form-label">כתובת אתר לסריקה אוטומטית</label>
+          <input type="url" name="scan_url" class="form-control"
+                 value="{{ config.scan_url() }}"
+                 placeholder="https://www.auto.co.il/articles/car-news/">
+          <div class="form-text">עמוד רשימת הכתבות שיסרק</div>
+        </div>
+
+        <div>
+          <label class="form-label">שעות סריקה יומיות</label>
+          <div id="scan-times-list">
+            {% for t in config.scan_times() %}
+            <div class="input-group mb-2 time-row">
+              <input type="time" name="scan_times" class="form-control" value="{{ t }}">
+              <button type="button" class="btn btn-outline-danger" onclick="removeTime(this)">✕</button>
+            </div>
+            {% endfor %}
+          </div>
+          <button type="button" class="btn btn-outline-secondary btn-sm mt-1"
+                  onclick="addTime()">+ הוסף שעה</button>
+          <div class="form-text">ניתן להגדיר מספר שעות ביום (לדוגמא: 07:00, 14:00, 21:00)</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- API key -->
+    <div class="card mb-4">
+      <div class="card-header">🔑 מפתח Anthropic API</div>
+      <div class="card-body">
+        <label class="form-label">API Key</label>
+        <input type="password" name="anthropic_api_key" class="form-control"
+               placeholder="{{ '●●●●●●●● (מוגדר)' if config.anthropic_api_key() else 'sk-ant-...' }}"
+               autocomplete="new-password">
+        <div class="form-text">השאר ריק כדי לשמור את הערך הקיים</div>
+      </div>
+    </div>
+
+    <!-- Google Drive -->
+    <div class="card mb-4">
+      <div class="card-header">📁 Google Drive</div>
+      <div class="card-body">
+
+        <div class="mb-3">
+          <label class="form-label">נתיב קובץ Service Account JSON</label>
+          <input type="text" name="google_service_account_key_path" class="form-control"
+                 value="{{ config.google_service_account_path() }}"
+                 placeholder="/home/user/service_account.json">
+          <div class="form-text">
+            הורד מ-Google Cloud Console → IAM → Service Accounts → Keys
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label">מזהה תיקיית Root ב-Drive</label>
+          <input type="text" name="google_drive_root_folder_id" class="form-control"
+                 value="{{ config.google_drive_root_folder_id() }}"
+                 placeholder="1aBcDeFgHiJkLmNo...">
+          <div class="form-text">
+            ה-ID מופיע ב-URL של תיקיית ה-Drive:
+            <code>drive.google.com/drive/folders/<strong>[ID כאן]</strong></code>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Local output -->
+    <div class="card mb-4">
+      <div class="card-header">💾 שמירה מקומית</div>
+      <div class="card-body">
+        <label class="form-label">תיקיית פלט</label>
+        <input type="text" name="output_dir" class="form-control"
+               value="{{ config.output_dir() }}"
+               placeholder="/home/user/carousels">
+        <div class="form-text">כאן יישמרו קבצי ה-JSON וה-DOCX לפני העלאה ל-Drive</div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100 py-2 mb-5">
+      💾 שמור הגדרות
+    </button>
+
+  </form>
+
+  <!-- Setup guide -->
+  <div class="card mb-4">
+    <div class="card-header">📖 מדריך הגדרת Google Drive</div>
+    <div class="card-body small">
+      <ol class="mb-0 ps-3">
+        <li class="mb-1">פתח <strong>Google Cloud Console</strong> וצור פרויקט חדש</li>
+        <li class="mb-1">הפעל את <strong>Google Drive API</strong></li>
+        <li class="mb-1">צור <strong>Service Account</strong> → הורד מפתח JSON</li>
+        <li class="mb-1">ב-Google Drive: צור תיקייה בשם <code>carousels</code></li>
+        <li class="mb-1">שתף את התיקייה עם כתובת האימייל של ה-Service Account</li>
+        <li>העתק את ה-ID מה-URL של התיקייה למעלה</li>
+      </ol>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function addTime() {
+    const list = document.getElementById('scan-times-list');
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2 time-row';
+    div.innerHTML = `
+      <input type="time" name="scan_times" class="form-control" value="12:00">
+      <button type="button" class="btn btn-outline-danger" onclick="removeTime(this)">✕</button>`;
+    list.appendChild(div);
+  }
+
+  function removeTime(btn) {
+    const rows = document.querySelectorAll('.time-row');
+    if (rows.length > 1) btn.closest('.time-row').remove();
+  }
+</script>
+</body>
+</html>

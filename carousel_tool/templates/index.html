@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מחולל קרוסלות | מגזין רכב</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container-fluid px-4">
+    <span class="navbar-brand">⚡ מחולל קרוסלות אוטומטי</span>
+    <a href="/settings" class="btn btn-outline-light btn-sm">⚙️ הגדרות</a>
+  </div>
+</nav>
+
+<div class="container py-4">
+
+  <!-- Status bar -->
+  <div class="status-bar mb-4">
+    <div class="d-flex align-items-center gap-3">
+      <span class="status-dot {{ 'on' if status.running else 'off' }}"></span>
+      <span class="fw-semibold">
+        {{ 'מתזמן פעיל' if status.running else 'מתזמן לא פעיל' }}
+      </span>
+      {% if status.next_run %}
+      <span class="text-muted small">| סריקה הבאה: {{ status.next_run }}</span>
+      {% endif %}
+      {% if status.scan_times %}
+      <span class="text-muted small">| שעות: {{ status.scan_times | join(', ') }}</span>
+      {% endif %}
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="triggerScan(this)">
+      🔍 סרוק עכשיו
+    </button>
+  </div>
+
+  <!-- Manual URL input -->
+  <div class="card mb-4">
+    <div class="card-header">עיבוד כתבה ידנית</div>
+    <div class="card-body">
+      <div class="input-group">
+        <input type="url" id="manual-url" class="form-control"
+               placeholder="הדבק כתובת כתבה... https://www.auto.co.il/...">
+        <button class="btn btn-success" onclick="processUrl(this)">
+          ✨ צור קרוסלה
+        </button>
+      </div>
+      <div id="manual-feedback" class="mt-2 small"></div>
+    </div>
+  </div>
+
+  <!-- Jobs table -->
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>היסטוריית משימות</span>
+      <button class="btn btn-outline-secondary btn-sm" onclick="refreshJobs()">↻ רענן</button>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th style="width:140px">תאריך</th>
+            <th>כתבה</th>
+            <th style="width:90px">מקור</th>
+            <th style="width:100px">סטטוס</th>
+            <th style="width:110px">Drive</th>
+          </tr>
+        </thead>
+        <tbody id="jobs-tbody">
+          <tr><td colspan="5" class="text-center text-muted py-5">טוען...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+
+  function statusBadge(status, error) {
+    if (status === 'done')       return '<span class="badge bg-success">הושלם ✓</span>';
+    if (status === 'processing') return '<span class="badge bg-warning text-dark">⏳ בעיבוד</span>';
+    if (status === 'error')      return `<span class="badge bg-danger" title="${error || ''}">✗ שגיאה</span>`;
+    return '<span class="badge bg-secondary">ממתין</span>';
+  }
+
+  function renderJobs(jobs) {
+    if (!jobs.length) {
+      return '<tr><td colspan="5" class="text-center text-muted py-5">אין משימות עדיין. לחץ "סרוק עכשיו" או הכנס כתובת כתבה.</td></tr>';
+    }
+    return jobs.map(job => {
+      const title = job.results && job.results.length
+        ? job.results.map(r => `<div class="small fw-semibold">${r.title || r.url}</div>`).join('')
+        : `<span class="text-muted small">${job.url || '(סריקה)'}</span>`;
+
+      const driveLinks = job.results
+        ? job.results.filter(r => r.drive_url)
+            .map(r => `<a href="${r.drive_url}" target="_blank" class="drive-link">📂 פתח</a>`)
+            .join(' ')
+        : '';
+
+      const source = job.source === 'manual'
+        ? '<span class="badge bg-info text-dark">ידני</span>'
+        : '<span class="badge bg-secondary">אוטומטי</span>';
+
+      const rowClass = `job-row status-${job.status}`;
+      return `
+        <tr class="${rowClass}">
+          <td class="text-muted small">${job.created_at.slice(0,16).replace('T',' ')}</td>
+          <td>${title}</td>
+          <td>${source}</td>
+          <td>${statusBadge(job.status, job.error)}</td>
+          <td>${driveLinks}</td>
+        </tr>`;
+    }).join('');
+  }
+
+  function refreshJobs() {
+    fetch('/api/jobs')
+      .then(r => r.json())
+      .then(jobs => {
+        document.getElementById('jobs-tbody').innerHTML = renderJobs(jobs);
+      });
+  }
+
+  function triggerScan(btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ מוסיף לתור...';
+    fetch('/api/scan', { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        btn.textContent = '✓ נוסף — מזהה: ' + data.job_id;
+        setTimeout(() => { btn.disabled = false; btn.textContent = '🔍 סרוק עכשיו'; refreshJobs(); }, 3000);
+      })
+      .catch(() => { btn.disabled = false; btn.textContent = '🔍 סרוק עכשיו'; });
+  }
+
+  function processUrl(btn) {
+    const url = document.getElementById('manual-url').value.trim();
+    const feedback = document.getElementById('manual-feedback');
+    if (!url) { feedback.innerHTML = '<span class="text-danger">אנא הכנס כתובת תקינה</span>'; return; }
+    btn.disabled = true;
+    feedback.innerHTML = '<span class="text-muted">מוסיף למשימות...</span>';
+    fetch('/api/process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    })
+      .then(r => r.json())
+      .then(data => {
+        feedback.innerHTML = `<span class="text-success">✓ נוסף! מזהה משימה: <strong>${data.job_id}</strong></span>`;
+        document.getElementById('manual-url').value = '';
+        btn.disabled = false;
+        setTimeout(refreshJobs, 1500);
+      })
+      .catch(() => {
+        feedback.innerHTML = '<span class="text-danger">שגיאה בהוספת משימה</span>';
+        btn.disabled = false;
+      });
+  }
+
+  // Load jobs on page load
+  document.addEventListener('DOMContentLoaded', refreshJobs);
+
+  // Auto-refresh every 8 seconds when a job is processing
+  function autoRefresh() {
+    fetch('/api/jobs?limit=5')
+      .then(r => r.json())
+      .then(jobs => {
+        const hasActive = jobs.some(j => j.status === 'processing' || j.status === 'queued');
+        if (hasActive) refreshJobs();
+      });
+  }
+  setInterval(autoRefresh, 8000);
+
+</script>
+</body>
+</html>

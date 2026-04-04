@@ -4,5 +4,8 @@ node_modules/
 .DS_Store
 *.log
 .vercel/
-carousel_tool/
+carousel_tool/.env
+carousel_tool/state/
+carousel_tool/output/
+carousel_tool/.claude/
 copywriting_agent/
