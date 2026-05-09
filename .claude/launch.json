@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "TING MEDIA Secure Server",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["app_secure.py"],
+      "port": 5000
+    }
+  ]
+}

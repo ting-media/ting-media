@@ -229,22 +229,26 @@
     <iframe id="appIframe" class="app-iframe" style="display: none;"></iframe>
 
     <script>
-        // Check authentication
-        function checkAuth() {
-            const session = localStorage.getItem('tingAdminSession');
-            if (!session) {
-                window.location.href = 'login.html';
-                return false;
-            }
+        const API_BASE = window.location.origin;
 
+        // Check authentication with server
+        async function checkAuth() {
             try {
-                const sessionData = JSON.parse(session);
-                document.getElementById('userName').textContent = sessionData.username || 'משתמש';
-                return true;
-            } catch (e) {
-                console.error('Invalid session data');
-                localStorage.removeItem('tingAdminSession');
-                window.location.href = 'login.html';
+                const response = await fetch(`${API_BASE}/api/auth/user`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (data.success && data.user) {
+                    document.getElementById('userName').textContent = data.user.username || 'משתמש';
+                    return true;
+                } else {
+                    window.location.href = '/login';
+                    return false;
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+                window.location.href = '/login';
                 return false;
             }
         }
@@ -255,10 +259,8 @@
             const iframe = document.getElementById('appIframe');
             const container = document.getElementById('appContainer');
 
-            // Try to load the app
             iframe.src = appUrl;
 
-            // When iframe loads successfully
             iframe.onload = function() {
                 container.innerHTML = '';
                 container.style.display = 'none';
@@ -266,7 +268,6 @@
                 iframe.classList.add('app-iframe');
             };
 
-            // If app doesn't load after 8 seconds, show error
             setTimeout(() => {
                 if (iframe.style.display === 'none') {
                     container.innerHTML = `
@@ -293,33 +294,46 @@
         // Go home
         function goHome() {
             if (confirm('חזרה לאתר הבית?')) {
-                window.location.href = 'index.html';
+                window.location.href = '/';
             }
         }
 
-        // Logout
-        function logout() {
+        // Secure logout
+        async function logout() {
             if (confirm('האם בטוח שברצונך להתנתק?')) {
-                localStorage.removeItem('tingAdminSession');
-                window.location.href = 'login.html';
+                try {
+                    const response = await fetch(`${API_BASE}/api/auth/logout`, {
+                        method: 'POST',
+                        credentials: 'include'
+                    });
+
+                    if (response.ok) {
+                        window.location.href = '/';
+                    }
+                } catch (error) {
+                    console.error('Logout error:', error);
+                    window.location.href = '/';
+                }
             }
         }
 
         // Initialize on load
-        window.addEventListener('load', function() {
-            if (checkAuth()) {
-                // Redirect to admin panel instead
-                window.location.href = 'admin.html';
+        window.addEventListener('load', async function() {
+            if (await checkAuth()) {
+                loadApp();
             }
         });
 
-        // Session timeout check
-        setInterval(() => {
-            const session = localStorage.getItem('tingAdminSession');
-            if (!session) {
-                window.location.href = 'login.html';
+        // Session validation (check every 5 minutes)
+        setInterval(async () => {
+            const response = await fetch(`${API_BASE}/api/auth/status`, {
+                credentials: 'include'
+            }).catch(() => null);
+
+            if (!response || !response.ok) {
+                window.location.href = '/login';
             }
-        }, 60000); // Check every minute
+        }, 300000);
     </script>
 </body>
 </html>

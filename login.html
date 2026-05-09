@@ -214,13 +214,16 @@
         </form>
 
         <div class="footer-text">
-            <p>✅ אישור:</p>
-            <p>אימייל: <strong>amit@tingil.co</strong></p>
-            <p>סיסמא: <strong>AMIT1144</strong></p>
+            <p>⚠️ הערה:</p>
+            <p>זו מערכת מאובטחת עם authentication בשרת</p>
+            <p style="font-size: 11px; margin-top: 8px; color: #64748b;">הסיסמה אובטחת ולא מוצגת בקליינט</p>
         </div>
     </div>
 
     <script>
+        // Configuration
+        const API_BASE = window.location.origin;
+
         // Create starfield background
         function createStarfield() {
             const starsCount = 50;
@@ -235,8 +238,8 @@
         }
         createStarfield();
 
-        // Handle login
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        // Secure login handler
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const email = document.getElementById('email').value.trim();
@@ -244,40 +247,60 @@
             const errorMsg = document.getElementById('errorMsg');
             const submitBtn = document.getElementById('submitBtn');
 
+            // Clear previous errors
             errorMsg.classList.remove('show');
             submitBtn.disabled = true;
             submitBtn.textContent = 'מתחבר...';
 
-            // Simulate authentication delay
-            setTimeout(() => {
-                // Hardcoded admin credentials
-                if (email === 'amit@tingil.co' && password === 'AMIT1144') {
-                    // Create session
-                    const sessionData = {
+            try {
+                // Send secure request to backend
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include', // Include cookies for session
+                    body: JSON.stringify({
                         email: email,
-                        role: 'admin',
-                        loginTime: new Date().toISOString(),
-                        username: 'אמית'
-                    };
-                    localStorage.setItem('tingAdminSession', JSON.stringify(sessionData));
+                        password: password
+                    })
+                });
 
-                    // Redirect to dashboard
-                    window.location.href = 'dashboard.html';
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Successful login - redirect to dashboard
+                    window.location.href = '/dashboard';
                 } else {
-                    errorMsg.textContent = '❌ אימייל או סיסמא שגויים';
+                    // Failed login
+                    errorMsg.textContent = data.error || 'שגיאה בהתחברות';
                     errorMsg.classList.add('show');
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'כניסה למערכת';
                 }
-            }, 500);
+            } catch (error) {
+                console.error('Login error:', error);
+                errorMsg.textContent = 'שגיאה בתקשורת עם השרת. אנא נסה שוב';
+                errorMsg.classList.add('show');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'כניסה למערכת';
+            }
         });
 
-        // Auto-fill if coming from main page
-        window.addEventListener('load', function() {
-            // Check if already logged in
-            const session = localStorage.getItem('tingAdminSession');
-            if (session) {
-                window.location.href = 'dashboard.html';
+        // Check if already logged in
+        window.addEventListener('load', async function() {
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/status`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (data.authenticated) {
+                    window.location.href = '/dashboard';
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+                // Continue to login page if check fails
             }
         });
     </script>
