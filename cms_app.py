@@ -455,11 +455,14 @@ def init_database():
         if Portfolio.query.count() == 0:
             sample_portfolios = [
                 Portfolio(title='Commercial - Bank', category='Commercial',
-                         description='פרסומת בנק ישראלית', order=1),
+                         description='פרסומת בנק ישראלית',
+                         video_url='https://www.youtube.com/watch?v=dQw4w9WgXcQ', order=1),
                 Portfolio(title='Social Media Reel', category='Social Media',
-                         description='תוכן לאינסטגרם', order=2),
+                         description='תוכן לאינסטגרם',
+                         video_url='https://www.youtube.com/watch?v=dQw4w9WgXcQ', order=2),
                 Portfolio(title='Event Coverage', category='Event',
-                         description='סרט אירוע עסקי', order=3),
+                         description='סרט אירוע עסקי',
+                         video_url='https://www.youtube.com/watch?v=dQw4w9WgXcQ', order=3),
             ]
             db.session.add_all(sample_portfolios)
             db.session.commit()
