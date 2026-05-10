@@ -5,6 +5,193 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TING MEDIA - קריאיטיב ופרודקשן</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Video Grid & Portfolio */
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-top: 20px;
+        }
+
+        .video-card {
+            border-radius: 12px;
+            overflow: hidden;
+            background: rgba(20, 35, 55, 0.5);
+            border: 1px solid rgba(255, 165, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .video-card:hover {
+            border-color: #FFA500;
+            box-shadow: 0 10px 30px rgba(255, 165, 0, 0.15);
+            transform: translateY(-5px);
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+        }
+
+        .video-thumbnail, video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .play-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 165, 0, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 10;
+        }
+
+        .video-card:hover .play-button {
+            opacity: 1;
+        }
+
+        .video-title {
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            margin: 0;
+        }
+
+        .video-category {
+            padding: 0 16px;
+            font-size: 12px;
+            color: #FFA500;
+            margin: 0 0 8px 0;
+            text-transform: uppercase;
+        }
+
+        .video-description {
+            padding: 0 16px 16px;
+            font-size: 13px;
+            color: #cbd5e1;
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        /* Video Modal */
+        .video-modal {
+            background: rgba(0, 0, 0, 0.9) !important;
+            display: flex;
+        }
+
+        .video-modal.active {
+            display: flex;
+        }
+
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            cursor: pointer;
+        }
+
+        .video-modal .modal-content {
+            position: relative;
+            z-index: 10;
+            max-width: 90%;
+            width: 900px;
+            background: rgba(15, 27, 46, 0.98);
+            border: 1px solid rgba(255, 165, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            background: none;
+            border: none;
+            color: #FFA500;
+            font-size: 36px;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        /* Carousel */
+        .carousel-section {
+            margin: 40px 0;
+            text-align: center;
+        }
+
+        .carousel-container {
+            position: relative;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .carousel-track {
+            display: flex;
+            width: 100%;
+        }
+
+        .carousel-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 20px;
+            border-radius: 12px;
+            background: rgba(20, 35, 55, 0.5);
+            border: 1px solid rgba(255, 165, 0, 0.2);
+        }
+
+        .carousel-item h3 {
+            color: white;
+            font-size: 20px;
+            margin: 0;
+        }
+
+        .carousel-item p {
+            color: #cbd5e1;
+            margin: 0;
+            max-width: 600px;
+        }
+
+        @media (max-width: 768px) {
+            .video-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 12px;
+            }
+
+            .video-modal .modal-content {
+                max-width: 95%;
+                width: 100%;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -35,12 +222,12 @@
                 </svg>
             </div>
 
-            <h1 class="hero-title reveal-element">קריאיטיב ופרודקשן</h1>
-            <p class="hero-subtitle reveal-element">מביאים את עולם ההפרסומות והתוכן לזירה הורטיקלית</p>
+            <h1 class="hero-title reveal-element" id="heroTitle">קריאיטיב ופרודקשן</h1>
+            <p class="hero-subtitle reveal-element" id="heroSubtitle">מביאים את עולם ההפרסומות והתוכן לזירה הורטיקלית</p>
 
             <div class="cta-buttons reveal-element">
-                <button class="btn btn-primary">בוא נדבר</button>
-                <button class="btn btn-secondary">לחצו כאן ונחזור אליכם</button>
+                <button class="btn btn-primary" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">בוא נדבר</button>
+                <button class="btn btn-secondary" onclick="alert('תודה! אנחנו נחזור אליכם בקרוב')">לחצו כאן ונחזור אליכם</button>
             </div>
         </div>
 
@@ -184,5 +371,6 @@
     </footer>
 
     <script src="script.js"></script>
+    <script src="cms-loader.js"></script>
 </body>
 </html>
