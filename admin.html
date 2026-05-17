@@ -700,11 +700,11 @@
       { id:'processes',  label:'תהליכים',   emoji:'⚙️', roles:['admin','office'] },
       { id:'expenses',   label:'הוצאות',    emoji:'💸', roles:['admin','finance'] },
       { id:'reports',    label:'דוחות',     emoji:'📈', roles:['admin','finance'] },
-      { id:'settings',   label:'הגדרות',    emoji:'⚙️', roles:['admin'] },
+      { id:'settings',   label:'הגדרות',    emoji:'⚙️', roles:['admin','office','client'] },
       { id:'videoreview',  label:'סקירת וידאו',  emoji:'🎬', roles:['admin','office','client'] },
       { id:'editingtrack',  label:'מעקב עריכה',    emoji:'🎞️', roles:['admin','office','client'] },
       { id:'profitability', label:'רווחיות לקוח', emoji:'💰', roles:['admin','office'] },
-      { id:'team',          label:'מצב הצוות',    emoji:'👥', roles:['admin','office','client'] },
+      { id:'team',          label:'מצב הצוות',    emoji:'👥', roles:['admin','office'] },
       { id:'archive',      label:'ארכיון',       emoji:'🗑', roles:['admin','office','client'] },
     ];
 
@@ -4730,6 +4730,39 @@
       const [saving, setSaving] = useState(false);
       const F = f => setForm(p=>({...p,...f}));
 
+      // Change password state
+      const [pwForm, setPwForm] = useState({ current:'', next:'', confirm:'' });
+      const [pwSaving, setPwSaving] = useState(false);
+      const [pwMsg, setPwMsg] = useState(null); // {type:'ok'|'err', text}
+      const PF = f => setPwForm(p=>({...p,...f}));
+
+      const changePassword = async () => {
+        if (!pwForm.next.trim()) return setPwMsg({type:'err', text:'נא להזין סיסמה חדשה'});
+        if (pwForm.next !== pwForm.confirm) return setPwMsg({type:'err', text:'הסיסמאות אינן תואמות'});
+        if (pwForm.next.length < 6) return setPwMsg({type:'err', text:'הסיסמה חייבת להכיל לפחות 6 תווים'});
+        setPwSaving(true); setPwMsg(null);
+        try {
+          if (pwForm.current.trim()) {
+            const cred = firebase.auth.EmailAuthProvider.credential(user.email, pwForm.current.trim());
+            await user.reauthenticateWithCredential(cred);
+          }
+          await user.updatePassword(pwForm.next);
+          setPwMsg({type:'ok', text:'✅ הסיסמה עודכנה בהצלחה!'});
+          setPwForm({current:'', next:'', confirm:''});
+        } catch(e) {
+          if (e.code==='auth/wrong-password'||e.code==='auth/invalid-credential') {
+            setPwMsg({type:'err', text:'הסיסמה הנוכחית שגויה'});
+          } else if (e.code==='auth/requires-recent-login') {
+            try {
+              await firebase.auth().sendPasswordResetEmail(user.email);
+              setPwMsg({type:'ok', text:'📧 נשלח אימייל לאיפוס סיסמה ל-'+user.email});
+            } catch(e2) { setPwMsg({type:'err', text:'שגיאה: '+e2.message}); }
+          } else {
+            setPwMsg({type:'err', text:'שגיאה: '+e.message});
+          }
+        } finally { setPwSaving(false); }
+      };
+
       // Home page content editor
       const [homeContent, setHomeContent] = useState(null);
       const [homeLoading, setHomeLoading] = useState(false);
@@ -4921,20 +4954,61 @@
 
           {/* PROFILE */}
           {tab==='profile' && (
-            <div className={CL.card+" max-w-xl"}>
-              <h3 className="text-white font-bold mb-4">פרטי משתמש</h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between border-b border-zinc-800 pb-2">
-                  <span className="text-zinc-400">אימייל</span>
-                  <span className="text-white">{user.email}</span>
+            <div className="space-y-4 max-w-xl">
+              {/* User info card */}
+              <div className={CL.card}>
+                <h3 className="text-white font-bold mb-4">פרטי משתמש</h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between border-b border-zinc-800 pb-2">
+                    <span className="text-zinc-400">אימייל</span>
+                    <span className="text-white">{user.email}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-zinc-800 pb-2">
+                    <span className="text-zinc-400">תפקיד</span>
+                    <span>{roleBadge(role)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">מזהה</span>
+                    <span className="text-zinc-500 text-xs font-mono">{user.uid}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between border-b border-zinc-800 pb-2">
-                  <span className="text-zinc-400">תפקיד</span>
-                  <span>{roleBadge(role)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-400">מזהה</span>
-                  <span className="text-zinc-500 text-xs font-mono">{user.uid}</span>
+              </div>
+
+              {/* Change password card */}
+              <div className={CL.card}>
+                <h3 className="text-white font-bold mb-1">🔑 שינוי סיסמה</h3>
+                <p className="text-zinc-500 text-xs mb-4">אם הזנת את הסיסמה הנוכחית בטעות, לחץ "שלח קישור איפוס" ללא מילוי שדה זה</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className={CL.label}>סיסמה נוכחית</label>
+                    <input type="password" className={CL.input} placeholder="הזן סיסמה נוכחית (להגנה)"
+                      value={pwForm.current} onChange={e=>PF({current:e.target.value})} />
+                  </div>
+                  <div>
+                    <label className={CL.label}>סיסמה חדשה *</label>
+                    <input type="password" className={CL.input} placeholder="לפחות 6 תווים"
+                      value={pwForm.next} onChange={e=>PF({next:e.target.value})} />
+                  </div>
+                  <div>
+                    <label className={CL.label}>אישור סיסמה חדשה *</label>
+                    <input type="password" className={CL.input} placeholder="חזור על הסיסמה"
+                      value={pwForm.confirm} onChange={e=>PF({confirm:e.target.value})} />
+                  </div>
+                  {pwMsg && (
+                    <div className={`text-sm px-3 py-2 rounded-lg ${pwMsg.type==='ok' ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'bg-red-500/15 text-red-300 border border-red-500/30'}`}>
+                      {pwMsg.text}
+                    </div>
+                  )}
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={changePassword} className={CL.btn} disabled={pwSaving}>
+                      {pwSaving ? 'מעדכן...' : '🔑 עדכן סיסמה'}
+                    </button>
+                    <button
+                      onClick={async()=>{ setPwSaving(true); try{ await firebase.auth().sendPasswordResetEmail(user.email); setPwMsg({type:'ok',text:'📧 נשלח אימייל לאיפוס סיסמה ל-'+user.email}); }catch(e){setPwMsg({type:'err',text:e.message});} finally{setPwSaving(false);} }}
+                      className={CL.btn2} disabled={pwSaving}>
+                      📧 שלח קישור איפוס
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -6657,6 +6731,11 @@
       const [tempShape, setTempShape]       = useState(null);
       const [showAnnotationFor, setShowAnnotationFor] = useState(null); // commentId whose annotation is showing
 
+      // Time-range marker state
+      const [rangeMode, setRangeMode]       = useState(false);  // toggle: point vs range comment
+      const [rangeStart, setRangeStart]     = useState(null);   // first click time
+      const [pendingTimeEnd, setPendingTimeEnd] = useState(null); // second click time
+
       const videoRef    = useRef(null);
       const progressRef = useRef(null);
       const newTextRef  = useRef(null);
@@ -6804,7 +6883,7 @@
         const onTime  = () => setCurrentTime(v.currentTime);
         const onDur   = () => setDuration(v.duration);
         const onPlay  = () => setPlaying(true);
-        const onPause = () => setPlaying(false);
+        const onPause = () => { setPlaying(false); setPendingTime(prev => prev !== null ? prev : (videoRef.current?.currentTime ?? null)); };
         const onEnd   = () => setPlaying(false);
         v.addEventListener('timeupdate', onTime);
         v.addEventListener('loadedmetadata', onDur);
@@ -6872,8 +6951,26 @@
         const v = videoRef.current;
         if (v) { v.pause(); }
         seek(t);
-        setPendingTime(t);
         setShowAnnotationFor(null);
+        if (rangeMode) {
+          if (rangeStart === null) {
+            // First click: set range start, show comment box
+            setRangeStart(t);
+            setPendingTimeEnd(null);
+            setPendingTime(t);
+          } else {
+            // Second click: set range end (ensure start < end)
+            const s = Math.min(rangeStart, t);
+            const end = Math.max(rangeStart, t);
+            setRangeStart(s);
+            setPendingTimeEnd(end);
+            setPendingTime(s);
+          }
+        } else {
+          setPendingTime(t);
+          setRangeStart(null);
+          setPendingTimeEnd(null);
+        }
       }
 
       function onProgressHover(e) {
@@ -6950,6 +7047,7 @@
         if (!newText.trim() || pendingTime === null) return;
         const annotation = drawShapes.length ? { shapes: drawShapes } : null;
         const curVer = activeReview.currentVersion || activeReview.versions?.length || 1;
+        const isRange = rangeMode && pendingTimeEnd !== null && pendingTimeEnd > pendingTime;
         await db.collection('videoComments').add({
           reviewId: activeReview.id,
           userId: user.uid,
@@ -6957,6 +7055,8 @@
           source: 'am',
           version: curVer,
           time: pendingTime,
+          timeStart: isRange ? pendingTime : null,
+          timeEnd: isRange ? pendingTimeEnd : null,
           text: newText.trim(),
           resolved: false,
           replies: [],
@@ -6968,6 +7068,8 @@
           commentCount: firebase.firestore.FieldValue.increment(1)
         });
         setPendingTime(null);
+        setPendingTimeEnd(null);
+        setRangeStart(null);
         setNewText('');
         setDrawShapes([]);
         setDrawing(false);
@@ -7415,27 +7517,67 @@
                     {/* Played fill */}
                     <div style={{ position:'absolute', left:0, top:0, height:'100%', width:`${pct}%`, background:'#fbbf24', borderRadius:3, transition:'width 0.1s linear' }} />
 
-                    {/* Comment marker dots */}
+                    {/* Comment marker dots (and range bars) */}
                     {duration > 0 && comments.map(c => (
-                      <div
-                        key={c.id}
-                        title={`${fmtTime(c.time)}: ${c.text}`}
-                        onClick={e => { e.stopPropagation(); seek(c.time); setActiveCommentId(c.id); }}
-                        style={{
-                          position:'absolute',
-                          left:`${(c.time / duration) * 100}%`,
-                          top:-3,
-                          transform:'translateX(-50%)',
-                          width:12,
-                          height:12,
-                          borderRadius:'50%',
-                          background: c.resolved ? '#22c55e' : '#3b82f6',
-                          border:'2px solid #09090b',
-                          cursor:'pointer',
-                          zIndex:2,
-                        }}
-                      />
+                      c.timeStart != null && c.timeEnd != null ? (
+                        /* Range bar */
+                        <div
+                          key={c.id}
+                          title={`${fmtTime(c.timeStart)}–${fmtTime(c.timeEnd)}: ${c.text}`}
+                          onClick={e => { e.stopPropagation(); seek(c.timeStart); setActiveCommentId(c.id); }}
+                          style={{
+                            position:'absolute',
+                            left:`${(c.timeStart / duration) * 100}%`,
+                            width:`${((c.timeEnd - c.timeStart) / duration) * 100}%`,
+                            top:1,
+                            height:4,
+                            background: c.resolved ? 'rgba(34,197,94,0.55)' : 'rgba(139,92,246,0.55)',
+                            borderLeft: `2px solid ${c.resolved ? '#22c55e' : '#a78bfa'}`,
+                            borderRight: `2px solid ${c.resolved ? '#22c55e' : '#a78bfa'}`,
+                            borderRadius:2,
+                            cursor:'pointer',
+                            zIndex:2,
+                          }}
+                        />
+                      ) : (
+                        /* Point dot */
+                        <div
+                          key={c.id}
+                          title={`${fmtTime(c.time)}: ${c.text}`}
+                          onClick={e => { e.stopPropagation(); seek(c.time); setActiveCommentId(c.id); }}
+                          style={{
+                            position:'absolute',
+                            left:`${(c.time / duration) * 100}%`,
+                            top:-3,
+                            transform:'translateX(-50%)',
+                            width:12,
+                            height:12,
+                            borderRadius:'50%',
+                            background: c.resolved ? '#22c55e' : '#3b82f6',
+                            border:'2px solid #09090b',
+                            cursor:'pointer',
+                            zIndex:2,
+                          }}
+                        />
+                      )
                     ))}
+
+                    {/* Range marker highlight on the progress bar */}
+                    {rangeMode && rangeStart !== null && duration > 0 && (
+                      <div style={{
+                        position:'absolute',
+                        left:`${(rangeStart / duration) * 100}%`,
+                        width: pendingTimeEnd !== null ? `${((pendingTimeEnd - rangeStart) / duration) * 100}%` : '2px',
+                        top:0,
+                        height:'100%',
+                        background:'rgba(139,92,246,0.45)',
+                        borderLeft:'2px solid #a78bfa',
+                        borderRight: pendingTimeEnd !== null ? '2px solid #a78bfa' : 'none',
+                        borderRadius:2,
+                        pointerEvents:'none',
+                        zIndex:1,
+                      }} />
+                    )}
 
                     {/* Hover tooltip */}
                     {hoverTime !== null && (
@@ -7461,6 +7603,11 @@
                       style={{ width:70, accentColor:'#f59e0b', cursor:'pointer' }}
                     />
                     <button
+                      onClick={() => { setRangeMode(m => { const next=!m; if(!m){setRangeStart(null);setPendingTimeEnd(null);} return next; }); }}
+                      title={rangeMode ? 'מצב נקודה (לחץ להחלפה)' : 'מצב טווח זמן (לחץ להחלפה)'}
+                      style={{ background: rangeMode ? 'rgba(139,92,246,0.2)' : 'rgba(39,39,42,0.8)', border:`1px solid ${rangeMode ? '#a78bfa' : '#3f3f46'}`, color: rangeMode ? '#a78bfa' : '#a1a1aa', borderRadius:6, padding:'2px 8px', fontSize:11, cursor:'pointer', whiteSpace:'nowrap' }}
+                    >{rangeMode ? '⟷ טווח' : '• נקודה'}</button>
+                    <button
                       onClick={() => { const v = videoRef.current; if(v && document.fullscreenEnabled) v.requestFullscreen(); }}
                       style={{ background:'none', border:'none', color:'#a1a1aa', cursor:'pointer', fontSize:14 }}
                     >⛶</button>
@@ -7472,7 +7619,13 @@
               {pendingTime !== null && (
                 <div style={{ background:'#18181b', borderTop:'1px solid #3b82f6', padding:'10px 14px', flexShrink:0 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8, flexWrap:'wrap' }}>
-                    <span style={{ color:'#93c5fd', fontSize:12 }}>💬 הוסף הערה ב-{fmtTime(pendingTime)}</span>
+                    {rangeMode && pendingTimeEnd !== null ? (
+                      <span style={{ color:'#c4b5fd', fontSize:12 }}>🎯 הערה לטווח: {fmtTime(pendingTime)} → {fmtTime(pendingTimeEnd)}</span>
+                    ) : rangeMode && rangeStart !== null ? (
+                      <span style={{ color:'#c4b5fd', fontSize:12 }}>🎯 לחץ על הטיימליין לסיום הטווח (מ-{fmtTime(rangeStart)})</span>
+                    ) : (
+                      <span style={{ color:'#93c5fd', fontSize:12 }}>💬 הוסף הערה ב-{fmtTime(pendingTime)}</span>
+                    )}
                     <div style={{ flex:1 }} />
                     <button
                       onClick={() => setDrawing(d => !d)}
@@ -7622,12 +7775,22 @@
                   >
                     {/* Header row */}
                     <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
-                      <span
-                        onClick={e => { e.stopPropagation(); seek(c.time); }}
-                        style={{ background:'rgba(59,130,246,0.15)', color:'#60a5fa', fontSize:10, padding:'2px 7px', borderRadius:99, border:'1px solid rgba(59,130,246,0.25)', cursor:'pointer', whiteSpace:'nowrap' }}
-                      >
-                        ⏱ {fmtTime(c.time)}
-                      </span>
+                      {c.timeStart != null && c.timeEnd != null ? (
+                        <span
+                          onClick={e => { e.stopPropagation(); seek(c.timeStart); }}
+                          style={{ background:'rgba(139,92,246,0.15)', color:'#a78bfa', fontSize:10, padding:'2px 7px', borderRadius:99, border:'1px solid rgba(139,92,246,0.3)', cursor:'pointer', whiteSpace:'nowrap' }}
+                          title="לחץ לקפוץ לתחילת הטווח"
+                        >
+                          ⟷ {fmtTime(c.timeStart)} – {fmtTime(c.timeEnd)}
+                        </span>
+                      ) : (
+                        <span
+                          onClick={e => { e.stopPropagation(); seek(c.time); }}
+                          style={{ background:'rgba(59,130,246,0.15)', color:'#60a5fa', fontSize:10, padding:'2px 7px', borderRadius:99, border:'1px solid rgba(59,130,246,0.25)', cursor:'pointer', whiteSpace:'nowrap' }}
+                        >
+                          ⏱ {fmtTime(c.time)}
+                        </span>
+                      )}
                       <span style={{ fontSize:11, color:'#a1a1aa', fontWeight:600, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.authorName}{c.guest ? ' (לקוח)' : ''}</span>
                       {c.round && (
                         <span title={`סבב ${c.round}`} style={{ fontSize:9, color:'#a78bfa', background:'rgba(167,139,250,0.12)', border:'1px solid rgba(167,139,250,0.25)', padding:'1px 5px', borderRadius:4, fontWeight:700 }}>
