@@ -702,8 +702,9 @@
       { id:'reports',    label:'דוחות',     emoji:'📈', roles:['admin','finance'] },
       { id:'settings',   label:'הגדרות',    emoji:'⚙️', roles:['admin'] },
       { id:'videoreview',  label:'סקירת וידאו',  emoji:'🎬', roles:['admin','office','client'] },
-      { id:'editingtrack', label:'מעקב עריכה',   emoji:'🎞️', roles:['admin','office','client'] },
-      { id:'team',         label:'מצב הצוות',    emoji:'👥', roles:['admin','office','client'] },
+      { id:'editingtrack',  label:'מעקב עריכה',    emoji:'🎞️', roles:['admin','office','client'] },
+      { id:'profitability', label:'רווחיות לקוח', emoji:'💰', roles:['admin','office'] },
+      { id:'team',          label:'מצב הצוות',    emoji:'👥', roles:['admin','office','client'] },
       { id:'archive',      label:'ארכיון',       emoji:'🗑', roles:['admin','office','client'] },
     ];
 
@@ -3134,9 +3135,10 @@
       const [loading, setLoading] = useState(true);
       const [modal,   setModal]   = useState(false);
       const [sel,     setSel]     = useState(null);
-      const blank = { name:'', type:'ריטיינר', status:'פעיל', retainerAmount:'', contactName:'', contactPhone:'', contactEmail:'', notes:'', accountManagerId:'', defaultEditorId:'' };
+      const blank = { name:'', type:'ריטיינר', status:'פעיל', retainerAmount:'', contactName:'', contactPhone:'', contactEmail:'', notes:'', accountManagerId:'', defaultEditorId:'', scopeOfWork:[] };
       const [form, setForm] = useState(blank);
       const [saving, setSaving] = useState(false);
+      const [modalTab, setModalTab] = useState('details');
       const F = f => setForm(p=>({...p,...f}));
 
       useEffect(()=>{
@@ -3147,8 +3149,11 @@
         });
       },[user]);
 
-      const openNew  = ()  => { setSel(null); setForm(blank); setModal(true); };
-      const openEdit = c   => { setSel(c); setForm({name:c.name||'',type:c.type||'ריטיינר',status:c.status||'פעיל',retainerAmount:c.retainerAmount||'',contactName:c.contactName||'',contactPhone:c.contactPhone||'',contactEmail:c.contactEmail||'',notes:c.notes||'',accountManagerId:c.accountManagerId||'',defaultEditorId:c.defaultEditorId||''}); setModal(true); };
+      const openNew  = ()  => { setSel(null); setForm(blank); setModalTab('details'); setModal(true); };
+      const openEdit = c   => { setSel(c); setForm({name:c.name||'',type:c.type||'ריטיינר',status:c.status||'פעיל',retainerAmount:c.retainerAmount||'',contactName:c.contactName||'',contactPhone:c.contactPhone||'',contactEmail:c.contactEmail||'',notes:c.notes||'',accountManagerId:c.accountManagerId||'',defaultEditorId:c.defaultEditorId||'',scopeOfWork:c.scopeOfWork||[]}); setModalTab('details'); setModal(true); };
+      const addScopeItem = () => F({ scopeOfWork: [...(form.scopeOfWork||[]), { id:Math.random().toString(36).slice(2), contentType:'סרטון YouTube', quantity:1, notes:'' }] });
+      const removeScopeItem = id => F({ scopeOfWork: (form.scopeOfWork||[]).filter(i=>i.id!==id) });
+      const updateScopeItem = (id, upd) => F({ scopeOfWork: (form.scopeOfWork||[]).map(i=>i.id===id?{...i,...upd}:i) });
       const del      = async id => { if(!window.confirm('למחוק לקוח זה?')) return; await db.collection('clients').doc(id).delete(); };
 
       const save = async () => {
@@ -3217,61 +3222,123 @@
 
           {modal && (
             <Modal title={sel?'עריכת לקוח':'לקוח חדש'} onClose={()=>setModal(false)} wide>
-              <div className="grid grid-cols-2 gap-x-4">
-                <div className="col-span-2">
-                  <label className={CL.label}>שם לקוח *</label>
-                  <input className={CL.input} placeholder="שם החברה" value={form.name} onChange={e=>F({name:e.target.value})} />
-                </div>
-                <div>
-                  <label className={CL.label}>סוג</label>
-                  <select className={CL.input} value={form.type} onChange={e=>F({type:e.target.value})}>
-                    <option>ריטיינר</option><option>פרויקטים</option><option>שניהם</option>
-                  </select>
-                </div>
-                <div>
-                  <label className={CL.label}>סטטוס</label>
-                  <select className={CL.input} value={form.status} onChange={e=>F({status:e.target.value})}>
-                    <option>פעיל</option><option>שקע</option><option>סגור</option>
-                  </select>
-                </div>
-                {showFin && <div>
-                  <label className={CL.label}>ריטיינר חודשי (₪)</label>
-                  <input type="number" className={CL.input} placeholder="13000" value={form.retainerAmount} onChange={e=>F({retainerAmount:e.target.value})} />
-                </div>}
-                <div>
-                  <label className={CL.label}>איש קשר</label>
-                  <input className={CL.input} placeholder="שם מלא" value={form.contactName} onChange={e=>F({contactName:e.target.value})} />
-                </div>
-                <div>
-                  <label className={CL.label}>טלפון</label>
-                  <input className={CL.input} placeholder="050-..." value={form.contactPhone} onChange={e=>F({contactPhone:e.target.value})} />
-                </div>
-                <div>
-                  <label className={CL.label}>אימייל</label>
-                  <input type="email" className={CL.input} value={form.contactEmail} onChange={e=>F({contactEmail:e.target.value})} />
-                </div>
-                <div className="col-span-2 mt-2 pt-3 border-t border-zinc-800">
-                  <div className="text-xs text-zinc-400 font-semibold mb-2">שיוך צוות</div>
-                </div>
-                <div>
-                  <label className={CL.label}>מנהל תיק</label>
-                  <select className={CL.input} value={form.accountManagerId} onChange={e=>F({accountManagerId:e.target.value})}>
-                    <option value="">— ללא —</option>
-                    {employees.map(e=> <option key={e.id} value={e.id}>{e.name||e.fullName||'(ללא שם)'}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className={CL.label}>עורך וידאו ברירת מחדל</label>
-                  <select className={CL.input} value={form.defaultEditorId} onChange={e=>F({defaultEditorId:e.target.value})}>
-                    <option value="">— ללא —</option>
-                    {suppliers.filter(s=>s.supplierRole==='עורך וידאו'||s.supplierRole==='עורך').map(s=> <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                </div>
-                <div className="col-span-2">
-                  <label className={CL.label}>הערות פנימיות</label>
-                  <textarea className={CL.input} rows={2} value={form.notes} onChange={e=>F({notes:e.target.value})} />
-                </div>
+              {/* Tab bar */}
+              <div className="flex gap-0 mb-5 border-b border-zinc-800">
+                {[['details','📋 פרטים'],['scope','📦 כתב כמויות']].map(([id,label])=>(
+                  <button key={id} onClick={()=>setModalTab(id)}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${modalTab===id?'border-amber-400 text-amber-400':'border-transparent text-zinc-400 hover:text-white'} bg-transparent cursor-pointer`}>
+                    {label}
+                  </button>
+                ))}
               </div>
+
+              {/* Tab: פרטים */}
+              {modalTab==='details' && (
+                <div className="grid grid-cols-2 gap-x-4">
+                  <div className="col-span-2">
+                    <label className={CL.label}>שם לקוח *</label>
+                    <input className={CL.input} placeholder="שם החברה" value={form.name} onChange={e=>F({name:e.target.value})} />
+                  </div>
+                  <div>
+                    <label className={CL.label}>סוג</label>
+                    <select className={CL.input} value={form.type} onChange={e=>F({type:e.target.value})}>
+                      <option>ריטיינר</option><option>פרויקטים</option><option>שניהם</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={CL.label}>סטטוס</label>
+                    <select className={CL.input} value={form.status} onChange={e=>F({status:e.target.value})}>
+                      <option>פעיל</option><option>שקע</option><option>סגור</option>
+                    </select>
+                  </div>
+                  {showFin && <div>
+                    <label className={CL.label}>ריטיינר חודשי (₪)</label>
+                    <input type="number" className={CL.input} placeholder="13000" value={form.retainerAmount} onChange={e=>F({retainerAmount:e.target.value})} />
+                  </div>}
+                  <div>
+                    <label className={CL.label}>איש קשר</label>
+                    <input className={CL.input} placeholder="שם מלא" value={form.contactName} onChange={e=>F({contactName:e.target.value})} />
+                  </div>
+                  <div>
+                    <label className={CL.label}>טלפון</label>
+                    <input className={CL.input} placeholder="050-..." value={form.contactPhone} onChange={e=>F({contactPhone:e.target.value})} />
+                  </div>
+                  <div>
+                    <label className={CL.label}>אימייל</label>
+                    <input type="email" className={CL.input} value={form.contactEmail} onChange={e=>F({contactEmail:e.target.value})} />
+                  </div>
+                  <div className="col-span-2 mt-2 pt-3 border-t border-zinc-800">
+                    <div className="text-xs text-zinc-400 font-semibold mb-2">שיוך צוות</div>
+                  </div>
+                  <div>
+                    <label className={CL.label}>מנהל תיק</label>
+                    <select className={CL.input} value={form.accountManagerId} onChange={e=>F({accountManagerId:e.target.value})}>
+                      <option value="">— ללא —</option>
+                      {employees.map(e=> <option key={e.id} value={e.id}>{e.name||e.fullName||'(ללא שם)'}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={CL.label}>עורך וידאו ברירת מחדל</label>
+                    <select className={CL.input} value={form.defaultEditorId} onChange={e=>F({defaultEditorId:e.target.value})}>
+                      <option value="">— ללא —</option>
+                      {suppliers.filter(s=>s.supplierRole==='עורך וידאו'||s.supplierRole==='עורך').map(s=> <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className={CL.label}>הערות פנימיות</label>
+                    <textarea className={CL.input} rows={2} value={form.notes} onChange={e=>F({notes:e.target.value})} />
+                  </div>
+                </div>
+              )}
+
+              {/* Tab: כתב כמויות */}
+              {modalTab==='scope' && (
+                <div>
+                  <p className="text-xs text-zinc-400 mb-4">הגדר את הפריטים שהלקוח מחויב לקבל מדי חודש — יופיעו בדוח רווחיות לחישוב עלות עריכה חודשית מוערכת.</p>
+                  <div className="space-y-2">
+                    {(form.scopeOfWork||[]).length===0 && (
+                      <div className="text-center py-6 text-zinc-500 text-sm">אין פריטים עדיין — לחץ ״+ הוסף פריט״</div>
+                    )}
+                    {(form.scopeOfWork||[]).map(item=>(
+                      <div key={item.id} className="flex gap-2 items-center">
+                        <select className={CL.input} style={{flex:'0 0 170px'}} value={item.contentType}
+                          onChange={e=>updateScopeItem(item.id,{contentType:e.target.value})}>
+                          <option>סרטון YouTube</option><option>ריל</option><option>פוסט</option>
+                          <option>סטורי</option><option>פודקאסט</option><option>מצגת</option><option>אחר</option>
+                        </select>
+                        <input type="number" min="1" className={CL.input} style={{flex:'0 0 65px'}}
+                          value={item.quantity} onChange={e=>updateScopeItem(item.id,{quantity:Number(e.target.value)||1})}
+                          placeholder="כמות" />
+                        <span className="text-xs text-zinc-500 flex-shrink-0">/ חודש</span>
+                        <input className={CL.input} style={{flex:1}} value={item.notes}
+                          onChange={e=>updateScopeItem(item.id,{notes:e.target.value})}
+                          placeholder="הערה (לא חובה)" />
+                        <button onClick={()=>removeScopeItem(item.id)}
+                          className="text-red-400 hover:text-red-300 bg-transparent border-0 cursor-pointer px-1 flex-shrink-0 text-lg leading-none">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={addScopeItem}
+                    className="mt-3 text-sm text-amber-400 hover:text-amber-300 bg-transparent border-0 cursor-pointer font-medium">
+                    + הוסף פריט
+                  </button>
+                  {showFin && (form.scopeOfWork||[]).length > 0 && (()=>{
+                    const editTypes = ['סרטון','ריל','פודקאסט','וידאו'];
+                    const editQty = (form.scopeOfWork||[]).filter(i=>editTypes.some(t=>i.contentType.includes(t))).reduce((s,i)=>s+(Number(i.quantity)||0),0);
+                    const editor = suppliers.find(s=>s.id===form.defaultEditorId);
+                    const rate = Number(editor?.videoRate)||0;
+                    if (!editQty||!rate) return null;
+                    return (
+                      <div className="mt-4 p-3 rounded-lg bg-amber-400/8 border border-amber-400/20 text-sm">
+                        <span className="text-zinc-400">עלות עריכה חודשית מוערכת: </span>
+                        <span className="text-amber-400 font-bold">₪{(editQty*rate).toLocaleString()}</span>
+                        <span className="text-zinc-500"> ({editQty} יח׳ × ₪{rate})</span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
               <div className="flex gap-2 justify-end mt-5">
                 <button onClick={()=>setModal(false)} className={CL.btn2}>ביטול</button>
                 <button onClick={save} className={CL.btn} disabled={saving}>{saving?'שומר...':'שמור'}</button>
@@ -3832,7 +3899,7 @@
       const [search,  setSearch]  = useState('');
       const [filterMonth, setFilterMonth] = useState('all'); // all | YYYY-MM
       const today = new Date().toISOString().split('T')[0];
-      const blank = { description:'', category:'תוכנה', amount:'', date:today, kind:'variable', supplierId:'', projectId:'', recurrence:'monthly', notes:'' };
+      const blank = { description:'', category:'תוכנה', amount:'', date:today, kind:'variable', supplierId:'', projectId:'', clientId:'', recurrence:'monthly', notes:'' };
       const [form, setForm] = useState(blank);
       const [saving, setSaving] = useState(false);
       const F = f => setForm(p=>({...p,...f}));
@@ -3852,7 +3919,7 @@
         setForm({
           description:e.description||'', category:e.category||'תוכנה', amount:e.amount||'',
           date:e.date||today, kind:e.kind||'variable', supplierId:e.supplierId||'', projectId:e.projectId||'',
-          recurrence:e.recurrence||'monthly', notes:e.notes||''
+          clientId:e.clientId||'', recurrence:e.recurrence||'monthly', notes:e.notes||''
         });
         setModal(true);
       };
@@ -4165,6 +4232,12 @@
                 <select className={CL.input} value={form.projectId} onChange={e=>F({projectId:e.target.value})}>
                   <option value="">— ללא פרויקט —</option>
                   {projects.map(p=><option key={p.id} value={p.id}>{p.name} {p.client?`(${p.client})`:''}</option>)}
+                </select>
+
+                <label className={CL.label}>🤝 שייך ללקוח (אופציונלי - לדוח רווחיות לקוח)</label>
+                <select className={CL.input} value={form.clientId} onChange={e=>F({clientId:e.target.value})}>
+                  <option value="">— ללא לקוח (הוצאה כללית) —</option>
+                  {clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
 
                 <label className={CL.label}>תאריך</label>
@@ -5990,6 +6063,189 @@
       );
     }
 
+    /* ── CLIENT PROFITABILITY ── */
+    function ClientProfitability({ role, clients=[], tasks=[], suppliers=[], expenses=[], projects=[] }) {
+      const today = new Date();
+      const [selMonth, setSelMonth] = useState(today.toISOString().slice(0,7));
+      const EDIT_TYPES = ['סרטון','ריל','פודקאסט','וידאו'];
+
+      // Month picker options (last 6 months + next month)
+      const monthOptions = [];
+      for (let i = -5; i <= 1; i++) {
+        const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+        const key = d.toISOString().slice(0, 7);
+        const label = d.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+        monthOptions.push({ key, label });
+      }
+      monthOptions.reverse();
+
+      const editorRate = editorId => {
+        if (!editorId) return 0;
+        return Number(suppliers.find(s => s.id === editorId)?.videoRate) || 0;
+      };
+
+      const getStats = client => {
+        const cName = client.name;
+        const retainer = Number(client.retainerAmount) || 0;
+        const scope = client.scopeOfWork || [];
+
+        // Scope: estimated monthly editing cost
+        const editScope = scope.filter(i => EDIT_TYPES.some(t => (i.contentType||'').includes(t)));
+        const editScopeQty = editScope.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
+        const rate = editorRate(client.defaultEditorId);
+        const estimatedEditCost = editScopeQty * rate;
+
+        // Tasks in editing (stage ≥ 6) for this client
+        const editingTasks = tasks.filter(t => t.client === cName && (t.stage||1) >= 6);
+        const inEditingNow  = editingTasks.filter(t => (t.stage||1) < FINAL_STAGE).length;
+
+        // Actual editing cost this month — tasks whose stage changed to ≥6 this month
+        // Approximation: use task.updatedAt or createdAt
+        const thisMonthEdit = editingTasks.filter(t => {
+          const raw = t.updatedAt?.toDate?.() || t.createdAt?.toDate?.() || t.updatedAt || t.createdAt;
+          if (!raw) return false;
+          return (raw instanceof Date ? raw : new Date(raw)).toISOString().slice(0,7) === selMonth;
+        });
+        const actualEditCost = thisMonthEdit.reduce((s, t) => s + editorRate(t.editorId || client.defaultEditorId), 0);
+
+        // Additional expenses linked to this client for selected month
+        const linkedExpenses = expenses
+          .filter(e => e.clientId === client.id && (e.date||'').slice(0,7) === selMonth)
+          .reduce((s, e) => s + (Number(e.amount) || 0), 0);
+
+        // Totals (use estimated edit cost if scope defined, else actual)
+        const editCostForCalc = editScopeQty > 0 ? estimatedEditCost : actualEditCost;
+        const totalCosts = editCostForCalc + linkedExpenses;
+        const profit = retainer - totalCosts;
+        const margin = retainer > 0 ? Math.round((profit / retainer) * 100) : null;
+
+        return { retainer, scope, editScopeQty, rate, estimatedEditCost, actualEditCost,
+                 editCostForCalc, linkedExpenses, totalCosts, profit, margin, inEditingNow,
+                 thisMonthCount: thisMonthEdit.length };
+      };
+
+      const activeClients = clients.filter(c => c.status === 'פעיל');
+      const allStats = activeClients.map(c => ({ c, s: getStats(c) }));
+      const totRetainer = allStats.reduce((s, x) => s + x.s.retainer, 0);
+      const totCosts    = allStats.reduce((s, x) => s + x.s.totalCosts, 0);
+      const totProfit   = totRetainer - totCosts;
+      const totMargin   = totRetainer > 0 ? Math.round((totProfit / totRetainer) * 100) : 0;
+
+      const fmt = v => {
+        const abs = Math.round(Math.abs(v));
+        return (v < 0 ? '-' : '') + '₪' + abs.toLocaleString();
+      };
+
+      const Kpi = ({ icon, label, value, color = 'text-amber-400', sub }) => (
+        <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:12,padding:'16px 20px'}}>
+          <div style={{fontSize:22,marginBottom:6}}>{icon}</div>
+          <div className={`text-2xl font-bold ${color}`}>{value}</div>
+          <div style={{fontSize:12,color:'var(--text-sub)',marginTop:4}}>{label}</div>
+          {sub && <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>{sub}</div>}
+        </div>
+      );
+
+      return (
+        <div>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-white">💰 רווחיות לקוחות</h2>
+              <p className="text-sm text-zinc-400 mt-1">ריטיינר מול הוצאות עריכה — לפי כתב כמויות ועלות עורך</p>
+            </div>
+            <select className={CL.input} style={{width:'auto'}} value={selMonth} onChange={e=>setSelMonth(e.target.value)}>
+              {monthOptions.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
+            </select>
+          </div>
+
+          {/* KPIs */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:28}}>
+            <Kpi icon="💵" label="סה״כ ריטיינרים" value={fmt(totRetainer)} color="text-emerald-400" />
+            <Kpi icon="✂️" label="עלות עריכה מוערכת" value={fmt(totCosts)} color="text-orange-400" />
+            <Kpi icon="📈" label="רווח מוערך" value={fmt(totProfit)} color={totProfit>=0?'text-emerald-400':'text-red-400'} />
+            <Kpi icon="%" label="מרג׳ ממוצע" value={`${totMargin}%`}
+              color={totMargin>=40?'text-emerald-400':totMargin>=20?'text-amber-400':'text-red-400'}
+              sub={totMargin<20?'מתחת ליעד (20%)':undefined} />
+          </div>
+
+          {/* Per-client table */}
+          {activeClients.length === 0
+            ? <Empty msg="אין לקוחות פעילים" />
+            : (
+            <div className="bg-zinc-900/60 rounded-xl border border-zinc-800 overflow-hidden">
+              <table className="w-full text-right">
+                <THead cols={['לקוח','ריטיינר','כתב כמויות','עורך + תעריף','עלות עריכה','הוצאות נוספות','רווח','מרג\'']} />
+                <tbody>
+                  {allStats.map(({ c, s }) => (
+                    <tr key={c.id} className="border-t border-zinc-800/60 hover:bg-zinc-900/40">
+                      <td className="px-4 py-3">
+                        <div className="text-white font-semibold text-sm">{c.name}</div>
+                        {s.inEditingNow > 0 && <div className="text-xs text-orange-400 mt-0.5">✂️ {s.inEditingNow} בעריכה</div>}
+                        {s.thisMonthCount > 0 && <div className="text-xs text-blue-400 mt-0.5">📅 {s.thisMonthCount} החודש</div>}
+                      </td>
+                      <td className="px-4 py-3 text-emerald-400 text-sm font-medium">
+                        {s.retainer ? fmt(s.retainer) : <span className="text-zinc-600">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-zinc-300">
+                        {s.scope.length > 0
+                          ? <div className="space-y-0.5">{s.scope.map((i,idx)=>(
+                              <div key={idx}>{i.quantity} {i.contentType}</div>
+                            ))}</div>
+                          : <span className="text-zinc-600">לא הוגדר</span>
+                        }
+                      </td>
+                      <td className="px-4 py-3 text-zinc-400 text-sm">
+                        {c.defaultEditorId
+                          ? <><div>{suppliers.find(s2=>s2.id===c.defaultEditorId)?.name||'—'}</div>
+                              {s.rate>0&&<div className="text-xs text-zinc-500">₪{s.rate}/סרטון</div>}</>
+                          : <span className="text-zinc-600">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-amber-400 text-sm font-medium">
+                        {s.editCostForCalc > 0
+                          ? <><div>{fmt(s.editCostForCalc)}</div>
+                              {s.editScopeQty>0&&<div className="text-xs text-zinc-500">{s.editScopeQty}×₪{s.rate} (מוערך)</div>}
+                              {s.editScopeQty===0&&s.actualEditCost>0&&<div className="text-xs text-zinc-500">{s.thisMonthCount} סרטים (בפועל)</div>}</>
+                          : <span className="text-zinc-600">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-300 text-sm">
+                        {s.linkedExpenses > 0 ? fmt(s.linkedExpenses) : <span className="text-zinc-600">—</span>}
+                      </td>
+                      <td className={`px-4 py-3 text-sm font-bold ${s.profit>=0?'text-emerald-400':'text-red-400'}`}>
+                        {s.retainer > 0 ? fmt(s.profit) : <span className="text-zinc-600">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {s.margin !== null
+                          ? <span className={`text-sm font-bold ${s.margin>=40?'text-emerald-400':s.margin>=20?'text-amber-400':'text-red-400'}`}>{s.margin}%</span>
+                          : <span className="text-zinc-600">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Totals */}
+                  <tr className="border-t-2 border-zinc-700 bg-zinc-800/30">
+                    <td className="px-4 py-3 text-zinc-300 text-sm font-bold">סה״כ</td>
+                    <td className="px-4 py-3 text-emerald-400 text-sm font-bold">{fmt(totRetainer)}</td>
+                    <td className="px-4 py-3"/>
+                    <td className="px-4 py-3"/>
+                    <td className="px-4 py-3 text-amber-400 text-sm font-bold">{fmt(totCosts)}</td>
+                    <td className="px-4 py-3"/>
+                    <td className={`px-4 py-3 text-sm font-bold ${totProfit>=0?'text-emerald-400':'text-red-400'}`}>{fmt(totProfit)}</td>
+                    <td className={`px-4 py-3 text-sm font-bold ${totMargin>=40?'text-emerald-400':totMargin>=20?'text-amber-400':'text-red-400'}`}>{totMargin}%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Legend */}
+          <div className="mt-4 p-3 rounded-lg bg-zinc-900/60 border border-zinc-800 text-xs text-zinc-500 space-y-1">
+            <div>💡 <strong className="text-zinc-400">עלות עריכה מוערכת</strong> = כתב כמויות (סרטונים/ריילס לחודש) × תעריף עורך. אם לא הוגדר כתב כמויות — מחושב מהסרטים שנשלחו בחודש.</div>
+            <div>💡 <strong className="text-zinc-400">הוצאות נוספות</strong> = הוצאות שקושרו ידנית ללקוח זה בלשונית ״הוצאות״.</div>
+            <div>💡 <strong className="text-zinc-400">מרג׳</strong> = (ריטיינר − הוצאות) / ריטיינר × 100. יעד: 40%+.</div>
+          </div>
+        </div>
+      );
+    }
+
     /* ── EDITOR TRACKING ── */
     function EditorTracking({ user, role, tasks=[], suppliers=[], clients=[] }) {
       const showFin = isFinance(role);
@@ -6182,8 +6438,9 @@
           case 'reports':   return <Reports role={role} clients={clients} expenses={expenses} tasks={tasks} employees={employees} suppliers={suppliers} projects={projects} />;
           case 'settings':    return <Settings user={user} role={role} />;
           case 'videoreview':   return <VideoReview user={user} role={role} tasks={tasks} clients={clients} />;
-          case 'editingtrack':  return <EditorTracking user={user} role={role} tasks={tasks} suppliers={suppliers} clients={clients} />;
-          case 'team':          return <TeamStatus user={user} role={role} tasks={tasks} employees={employees} suppliers={suppliers} onNav={setSection} />;
+          case 'editingtrack':   return <EditorTracking user={user} role={role} tasks={tasks} suppliers={suppliers} clients={clients} />;
+          case 'profitability':  return <ClientProfitability role={role} clients={clients} tasks={tasks} suppliers={suppliers} expenses={expenses} projects={projects} />;
+          case 'team':           return <TeamStatus user={user} role={role} tasks={tasks} employees={employees} suppliers={suppliers} onNav={setSection} />;
           case 'archive':     return <Archive user={user} role={role} employees={employees} suppliers={suppliers} />;
           default:            return null;
         }
