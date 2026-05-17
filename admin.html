@@ -691,15 +691,15 @@
 
     const NAV = [
       { id:'mywork',     label:'הבית שלי',  emoji:'🏠', roles:['admin','office','client'] },
-      { id:'dashboard',  label:'דשבורד',    emoji:'📊', roles:['admin','finance'] },
+      { id:'dashboard',  label:'דשבורד',    emoji:'📊', roles:['admin','office','finance'] },
       { id:'tasks',      label:'משימות',    emoji:'📋', roles:['admin','office','client'] },
       { id:'clients',    label:'לקוחות',    emoji:'🤝', roles:['admin','office','client'] },
       { id:'suppliers',  label:'ספקים',     emoji:'🎬', roles:['admin','office','client'] },
       { id:'projects',   label:'פרויקטים',  emoji:'📁', roles:['admin','office','client'] },
       { id:'employees',  label:'עובדים',    emoji:'👥', roles:['admin','office'] },
       { id:'processes',  label:'תהליכים',   emoji:'⚙️', roles:['admin','office'] },
-      { id:'expenses',   label:'הוצאות',    emoji:'💸', roles:['admin','finance'] },
-      { id:'reports',    label:'דוחות',     emoji:'📈', roles:['admin','finance'] },
+      { id:'expenses',   label:'הוצאות',    emoji:'💸', roles:['admin','office','finance'] },
+      { id:'reports',    label:'דוחות',     emoji:'📈', roles:['admin','office','finance'] },
       { id:'settings',   label:'הגדרות',    emoji:'⚙️', roles:['admin','office','client'] },
       { id:'videoreview',  label:'סקירת וידאו',  emoji:'🎬', roles:['admin','office','client'] },
       { id:'editingtrack',  label:'מעקב עריכה',    emoji:'🎞️', roles:['admin','office','client'] },
@@ -708,8 +708,8 @@
       { id:'archive',      label:'ארכיון',       emoji:'🗑', roles:['admin','office','client'] },
     ];
 
-    // הרשאת ראיית כסף (הכנסות/הוצאות/רווח/משכורות) — רק admin ו-finance
-    const isFinance = r => r === 'admin' || r === 'finance';
+    // הרשאת ראיית כסף (הכנסות/הוצאות/רווח/משכורות) — admin, office ו-finance
+    const isFinance = r => r === 'admin' || r === 'office' || r === 'finance';
 
     /* ── FINANCIAL ENGINE ── */
     // Single source of truth for all money calculations.
@@ -1838,8 +1838,8 @@
             </div>
           )}
 
-          {/* 👥 Team Productivity (admin only) */}
-          {role==='admin' && productivity && productivity.length>0 && (
+          {/* 👥 Team Productivity (admin + office) */}
+          {(role==='admin'||role==='office') && productivity && productivity.length>0 && (
             <div className="mt-6 bg-zinc-900/60 rounded-xl border border-zinc-800 p-5">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-white font-bold flex items-center gap-2"><span>👥</span>פרודוקטיביות צוות</h3>
@@ -2023,6 +2023,9 @@
           <div className="px-2 py-2.5 flex items-center gap-1 border-r border-zinc-800/40">
             {t.accountManagerId && (
               <div title={'מנהל: '+(employees.find(x=>x.id===t.accountManagerId)?.name||'?')} className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0" style={{background:'#1f1f23', color:'#a1a1aa', border:'1px solid #27272a'}}>{empInitials(t.accountManagerId)||'?'}</div>
+            )}
+            {t.assigneeEmployeeId && t.assigneeEmployeeId !== t.accountManagerId && (
+              <div title={'משוייך: '+(employees.find(x=>x.id===t.assigneeEmployeeId)?.name||employees.find(x=>x.id===t.assigneeEmployeeId)?.fullName||'?')} className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0" style={{background:'rgba(99,102,241,0.15)', color:'#818cf8', border:'1px solid rgba(99,102,241,0.35)'}}>{empInitials(t.assigneeEmployeeId)||'?'}</div>
             )}
             {t.editorId && (
               <div title={'עורך: '+(suppliers.find(x=>x.id===t.editorId)?.name||'?')} className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0" style={{background:'#1f1f23', color:'#fbbf24', border:'1px solid #3f2d04'}}>{supInitials(t.editorId)||'?'}</div>
@@ -2312,6 +2315,13 @@
                         {editors.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
                       </select>
                     </div>
+                  </div>
+                  <div style={{marginTop:8}}>
+                    <label className={CL.label}>👤 משוייך לעובד (חלוקת עבודה)</label>
+                    <select className={CL.input} value={form.assigneeEmployeeId} onChange={e=>F({assigneeEmployeeId:e.target.value})}>
+                      <option value="">— ללא שיוך ספציפי —</option>
+                      {employees.map(e=><option key={e.id} value={e.id}>{e.name||e.fullName||'(ללא שם)'}</option>)}
+                    </select>
                   </div>
                   {form.stage>=6&&!form.editorId&&<div style={{marginTop:6,fontSize:10,color:'#fcd34d'}}>⚠️ המשימה בשלב עריכה — נדרש לשייך עורך</div>}
                 </div>
@@ -2669,10 +2679,10 @@
       );
     }
 
-    const BLANK_TASK = { title:'', client:'', stage:1, priority:'medium', dueDate:'', shootDate:'', shootTime:'', notes:'', accountManagerId:'', editorId:'', stageData:{}, stageOwners:{} };
+    const BLANK_TASK = { title:'', client:'', stage:1, priority:'medium', dueDate:'', shootDate:'', shootTime:'', notes:'', accountManagerId:'', editorId:'', assigneeEmployeeId:'', stageData:{}, stageOwners:{} };
     const DRAFT_KEY  = id => `tingmedia.taskDraft.${id || 'new'}`;
     const isFormDirty = (form, sel) => {
-      const base = sel ? { title:sel.title||'', client:sel.client||'', stage:sel.stage||1, priority:sel.priority||'medium', dueDate:sel.dueDate||'', shootDate:sel.shootDate||'', shootTime:sel.shootTime||'', notes:sel.notes||'', accountManagerId:sel.accountManagerId||'', editorId:sel.editorId||'', stageData:sel.stageData||{}, stageOwners: sel.stageOwners||{} } : BLANK_TASK;
+      const base = sel ? { title:sel.title||'', client:sel.client||'', stage:sel.stage||1, priority:sel.priority||'medium', dueDate:sel.dueDate||'', shootDate:sel.shootDate||'', shootTime:sel.shootTime||'', notes:sel.notes||'', accountManagerId:sel.accountManagerId||'', editorId:sel.editorId||'', assigneeEmployeeId:sel.assigneeEmployeeId||'', stageData:sel.stageData||{}, stageOwners: sel.stageOwners||{} } : BLANK_TASK;
       return JSON.stringify(form) !== JSON.stringify(base);
     };
 
@@ -2750,7 +2760,7 @@
       const openEdit = t => {
         setSel(t);
         setUrlTask(t.id);
-        let initial = { title:t.title||'', client:t.client||'', stage:t.stage||1, priority:t.priority||'medium', dueDate:t.dueDate||'', shootDate:t.shootDate||'', shootTime:t.shootTime||'', notes:t.notes||'', accountManagerId:t.accountManagerId||'', editorId:t.editorId||'', stageData:t.stageData||{} };
+        let initial = { title:t.title||'', client:t.client||'', stage:t.stage||1, priority:t.priority||'medium', dueDate:t.dueDate||'', shootDate:t.shootDate||'', shootTime:t.shootTime||'', notes:t.notes||'', accountManagerId:t.accountManagerId||'', editorId:t.editorId||'', assigneeEmployeeId:t.assigneeEmployeeId||'', stageData:t.stageData||{} };
         try {
           const draft = localStorage.getItem(DRAFT_KEY(t.id));
           if (draft) { initial = JSON.parse(draft); setSavedDraft(true); setTimeout(()=>setSavedDraft(false), 4000); }
@@ -4777,7 +4787,8 @@
 
       const HF = f => setHomeForm(p=>({...p,...f}));
 
-      const isAdmin = role==='admin';
+      const isAdmin = role==='admin' || role==='office'; // office has near-admin authority
+      const isRealAdmin = role==='admin'; // true admin only — for user creation / system settings
 
       // Home screen prefs
       const [prefs, setPrefs] = useState(()=>{
@@ -5147,7 +5158,7 @@
             <div>
               <div className="flex justify-between items-center mb-4">
                 <p className="text-zinc-400 text-sm">{users.length} משתמשים רשומים</p>
-                <button onClick={openNew} className={CL.btn}>+ משתמש חדש</button>
+                {isRealAdmin && <button onClick={openNew} className={CL.btn}>+ משתמש חדש</button>}
               </div>
               {loading
                 ? <div className="text-center py-10 text-zinc-400 text-sm">טוען...</div>
@@ -5172,7 +5183,7 @@
                               <td className="px-4 py-3">
                                 <div className="flex gap-2">
                                   <button onClick={()=>openEdit(u)} className="text-xs text-amber-400 hover:text-amber-300 bg-transparent border-0 cursor-pointer">עריכה</button>
-                                  <button onClick={()=>deleteUser(u.id)} className="text-xs text-red-400 hover:text-red-300 bg-transparent border-0 cursor-pointer">הסר</button>
+                                  {isRealAdmin && <button onClick={()=>deleteUser(u.id)} className="text-xs text-red-400 hover:text-red-300 bg-transparent border-0 cursor-pointer">הסר</button>}
                                 </div>
                               </td>
                             </tr>
