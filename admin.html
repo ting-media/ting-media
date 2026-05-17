@@ -41,6 +41,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <style>
     :root {
       --bg: #09090b; --surface: #101012; --surface2: #161618;
@@ -341,6 +342,35 @@
       auth = firebase.auth(app);
       db   = firebase.firestore(app);
     } catch(e) { console.error("Firebase init:", e.message); }
+
+    /* ── EMAIL NOTIFICATIONS (EmailJS) ──
+       Set your EmailJS credentials here. Get them free at emailjs.com:
+       1. Create account → Email Services → connect Gmail/Outlook
+       2. Email Templates → create template with vars: {{to_email}}, {{to_name}}, {{task_title}}, {{client_name}}, {{assigner_name}}, {{task_link}}
+       3. Paste your Public Key, Service ID, Template ID below                     */
+    const EMAILJS_PUBLIC_KEY  = ''; // e.g. 'user_xxxxxxxxxx'
+    const EMAILJS_SERVICE_ID  = ''; // e.g. 'service_gmail'
+    const EMAILJS_TEMPLATE_ID = ''; // e.g. 'template_task_assigned'
+    const EMAILJS_ENABLED = !!(EMAILJS_PUBLIC_KEY && EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID);
+    if (EMAILJS_ENABLED && typeof emailjs !== 'undefined') emailjs.init(EMAILJS_PUBLIC_KEY);
+
+    async function sendTaskAssignedEmail({ toEmail, toName, taskTitle, clientName, assignerName, taskId }) {
+      if (!EMAILJS_ENABLED || typeof emailjs === 'undefined') return;
+      try {
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+          to_email:      toEmail,
+          to_name:       toName || toEmail,
+          task_title:    taskTitle || '(ללא שם)',
+          client_name:   clientName || '',
+          assigner_name: assignerName || 'טינג מדיה',
+          task_link:     window.location.origin + window.location.pathname + (taskId ? `?task=${taskId}` : ''),
+          app_name:      'TING MEDIA CRM',
+        });
+        console.log('📧 Email notification sent to', toEmail);
+      } catch(e) {
+        console.warn('EmailJS failed:', e);
+      }
+    }
 
     /* ── GOOGLE CALENDAR ── */
     // Uses Google Identity Services (GSI) TokenClient — consent once, then 100% silent forever.
@@ -2829,6 +2859,45 @@
               }
             } catch(e){ console.warn('Calendar sync failed:', e); alert('שמור — אך סנכרון ליומן נכשל: '+e.message); }
           }
+
+          // 📧 Email notification — send to assigned employee/editor when task created or assignee changed
+          try {
+            const prevAccountMgr = sel?.accountManagerId || '';
+            const prevEditor     = sel?.editorId || '';
+            const prevAssignee   = sel?.assigneeEmployeeId || '';
+            const taskId = newId || sel?.id;
+            const taskTitle = form.title || '(ללא שם)';
+            const clientName = form.client || '';
+            const assignerName = user.displayName || user.email || 'טינג מדיה';
+            const allUsers = (await db.collection('users').get()).docs.map(d=>({id:d.id,...d.data()}));
+            const allEmps  = employees;
+
+            // Helper: find email for an employee ID
+            const empEmail = (empId) => {
+              if (!empId) return null;
+              const emp = allEmps.find(e=>e.id===empId);
+              if (!emp) return null;
+              const u = allUsers.find(u=>u.linkedEmployeeId===empId || u.email===emp.email);
+              return u?.email || emp.email || null;
+            };
+            const empName = (empId) => {
+              const emp = allEmps.find(e=>e.id===empId);
+              return emp?.name || emp?.fullName || '';
+            };
+
+            // Send to accountManager if newly assigned
+            if (form.accountManagerId && form.accountManagerId !== prevAccountMgr) {
+              const email = empEmail(form.accountManagerId);
+              if (email) await sendTaskAssignedEmail({ toEmail:email, toName:empName(form.accountManagerId), taskTitle, clientName, assignerName, taskId });
+            }
+            // Send to general assignee if newly assigned
+            if (form.assigneeEmployeeId && form.assigneeEmployeeId !== prevAssignee) {
+              const email = empEmail(form.assigneeEmployeeId);
+              if (email && email !== empEmail(form.accountManagerId)) {
+                await sendTaskAssignedEmail({ toEmail:email, toName:empName(form.assigneeEmployeeId), taskTitle, clientName, assignerName, taskId });
+              }
+            }
+          } catch(emailErr) { console.warn('Email notification error:', emailErr); }
 
           // For new tasks, navigate to detail page (keep modal open with the new task)
           if (newId) {
@@ -5555,6 +5624,14 @@
             <button onClick={quickAdd} disabled={!quickTitle.trim() || quickAdding}
               style={{ padding:'5px 12px', background:'var(--accent)', color:'#000', fontSize:12, fontWeight:600, border:'none', borderRadius:6, cursor: quickTitle.trim() && !quickAdding ? 'pointer' : 'not-allowed', whiteSpace:'nowrap', flexShrink:0, opacity: quickTitle.trim() && !quickAdding ? 1:.5, transition:'opacity .15s' }}>
               {quickAdding ? 'שומר...' : 'הוסף'}
+            </button>
+            {/* Full form button — opens the Tasks section */}
+            <button onClick={() => onNav && onNav('tasks')}
+              title="פתח טופס יצירת משימה מלא"
+              style={{ padding:'5px 10px', background:'transparent', color:'var(--text-muted)', fontSize:12, border:'1px solid var(--border2)', borderRadius:6, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0, transition:'all .15s' }}
+              onMouseEnter={e=>{e.currentTarget.style.color='var(--text)';e.currentTarget.style.borderColor='var(--text-muted)';}}
+              onMouseLeave={e=>{e.currentTarget.style.color='var(--text-muted)';e.currentTarget.style.borderColor='var(--border2)';}}>
+              📋 טופס מלא
             </button>
           </div>
 
