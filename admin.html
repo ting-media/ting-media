@@ -1016,11 +1016,11 @@
             <form onSubmit={submit} className="space-y-4">
               <div>
                 <label className={CL.label}>אימייל</label>
-                <input type="email" className={CL.input} placeholder="amit@tingil.co" value={email} onChange={e=>setEmail(e.target.value)} required />
+                <input type="email" className={CL.input} placeholder="הכנס אימייל" value={email} onChange={e=>setEmail(e.target.value)} required />
               </div>
               <div>
                 <label className={CL.label}>סיסמא</label>
-                <input type="password" className={CL.input} placeholder="••••••••" value={pass} onChange={e=>setPass(e.target.value)} required />
+                <input type="password" className={CL.input} placeholder="הכנס סיסמא" value={pass} onChange={e=>setPass(e.target.value)} required />
               </div>
               {err && <div className="text-red-400 text-xs bg-red-900/20 border border-red-700/30 rounded-lg px-3 py-2">{err}</div>}
               {info && <div className="text-emerald-300 text-xs bg-emerald-900/20 border border-emerald-700/30 rounded-lg px-3 py-2">{info}</div>}
