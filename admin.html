@@ -730,6 +730,7 @@
       { id:'processes',  label:'תהליכים',   emoji:'⚙️', roles:['admin','office'] },
       { id:'expenses',   label:'הוצאות',    emoji:'💸', roles:['admin','office','finance'] },
       { id:'reports',    label:'דוחות',     emoji:'📈', roles:['admin','office','finance'] },
+      { id:'agent',      label:'סוכן CRM',  emoji:'🤖', roles:['admin','office'] },
       { id:'settings',   label:'הגדרות',    emoji:'⚙️', roles:['admin','office','client'] },
       { id:'videoreview',  label:'סקירת וידאו',  emoji:'🎬', roles:['admin','office','client'] },
       { id:'editingtrack',  label:'מעקב עריכה',    emoji:'🎞️', roles:['admin','office','client'] },
@@ -3214,7 +3215,7 @@
       const [loading, setLoading] = useState(true);
       const [modal,   setModal]   = useState(false);
       const [sel,     setSel]     = useState(null);
-      const blank = { name:'', type:'ריטיינר', status:'פעיל', retainerAmount:'', contactName:'', contactPhone:'', contactEmail:'', notes:'', accountManagerId:'', defaultEditorId:'', scopeOfWork:[] };
+      const blank = { name:'', type:'ריטיינר', status:'פעיל', retainerAmount:'', contacts:[], whatsappGroups:[], notes:'', accountManagerId:'', defaultEditorId:'', scopeOfWork:[] };
       const [form, setForm] = useState(blank);
       const [saving, setSaving] = useState(false);
       const [modalTab, setModalTab] = useState('details');
@@ -3228,8 +3229,31 @@
         });
       },[user]);
 
+      const migrateContacts = c => {
+        let contacts = c.contacts || [];
+        if (contacts.length === 0 && (c.contactName || c.contactPhone || c.contactEmail)) {
+          contacts = [{ id:'legacy-'+Date.now(), name:c.contactName||'', role:'איש קשר ראשי', phone:c.contactPhone||'', email:c.contactEmail||'', hasWhatsapp:true, isPrimary:true }];
+        }
+        return contacts;
+      };
+
       const openNew  = ()  => { setSel(null); setForm(blank); setModalTab('details'); setModal(true); };
-      const openEdit = c   => { setSel(c); setForm({name:c.name||'',type:c.type||'ריטיינר',status:c.status||'פעיל',retainerAmount:c.retainerAmount||'',contactName:c.contactName||'',contactPhone:c.contactPhone||'',contactEmail:c.contactEmail||'',notes:c.notes||'',accountManagerId:c.accountManagerId||'',defaultEditorId:c.defaultEditorId||'',scopeOfWork:c.scopeOfWork||[]}); setModalTab('details'); setModal(true); };
+      const openEdit = c   => {
+        setSel(c);
+        setForm({ name:c.name||'', type:c.type||'ריטיינר', status:c.status||'פעיל', retainerAmount:c.retainerAmount||'',
+          contacts: migrateContacts(c), whatsappGroups:c.whatsappGroups||[],
+          notes:c.notes||'', accountManagerId:c.accountManagerId||'', defaultEditorId:c.defaultEditorId||'', scopeOfWork:c.scopeOfWork||[] });
+        setModalTab('details'); setModal(true);
+      };
+
+      const newContactId = () => Math.random().toString(36).slice(2);
+      const addContact    = () => F({ contacts: [...(form.contacts||[]), { id:newContactId(), name:'', role:'', phone:'', email:'', hasWhatsapp:true, isPrimary:(form.contacts||[]).length===0 }] });
+      const removeContact = id => F({ contacts:(form.contacts||[]).filter(c=>c.id!==id) });
+      const updateContact = (id,upd) => F({ contacts:(form.contacts||[]).map(c=>c.id===id?{...c,...upd}:c) });
+      const addGroup      = () => F({ whatsappGroups:[...(form.whatsappGroups||[]), { id:newContactId(), name:'', type:'production', groupId:'' }] });
+      const removeGroup   = id => F({ whatsappGroups:(form.whatsappGroups||[]).filter(g=>g.id!==id) });
+      const updateGroup   = (id,upd) => F({ whatsappGroups:(form.whatsappGroups||[]).map(g=>g.id===id?{...g,...upd}:g) });
+
       const addScopeItem = () => F({ scopeOfWork: [...(form.scopeOfWork||[]), { id:Math.random().toString(36).slice(2), contentType:'סרטון YouTube', quantity:1, notes:'' }] });
       const removeScopeItem = id => F({ scopeOfWork: (form.scopeOfWork||[]).filter(i=>i.id!==id) });
       const updateScopeItem = (id, upd) => F({ scopeOfWork: (form.scopeOfWork||[]).map(i=>i.id===id?{...i,...upd}:i) });
@@ -3239,7 +3263,11 @@
         if (!form.name.trim()) return;
         setSaving(true);
         try {
-          const d = {...form, retainerAmount:Number(form.retainerAmount)||0, userId:user.uid, updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+          const primary = (form.contacts||[]).find(c=>c.isPrimary) || (form.contacts||[])[0] || {};
+          const d = { ...form, retainerAmount:Number(form.retainerAmount)||0,
+            // Backward compat fields
+            contactName: primary.name||'', contactPhone: primary.phone||'', contactEmail: primary.email||'',
+            userId:user.uid, updatedAt:firebase.firestore.FieldValue.serverTimestamp() };
           if (sel) await db.collection('clients').doc(sel.id).update(d);
           else     await db.collection('clients').add({...d, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
           setModal(false);
@@ -3303,10 +3331,10 @@
             <Modal title={sel?'עריכת לקוח':'לקוח חדש'} onClose={()=>setModal(false)} wide>
               {/* Tab bar */}
               <div className="flex gap-0 mb-5 border-b border-zinc-800">
-                {[['details','📋 פרטים'],['scope','📦 כתב כמויות']].map(([id,label])=>(
+                {[['details','📋 פרטים'],['contacts','👥 אנשי קשר'],['groups','📱 קבוצות WA'],['scope','📦 כתב כמויות']].map(([id,label])=>(
                   <button key={id} onClick={()=>setModalTab(id)}
                     className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${modalTab===id?'border-amber-400 text-amber-400':'border-transparent text-zinc-400 hover:text-white'} bg-transparent cursor-pointer`}>
-                    {label}
+                    {label}{id==='contacts'&&(form.contacts||[]).length>0?` (${form.contacts.length})`:''}
                   </button>
                 ))}
               </div>
@@ -3366,6 +3394,100 @@
                   <div className="col-span-2">
                     <label className={CL.label}>הערות פנימיות</label>
                     <textarea className={CL.input} rows={2} value={form.notes} onChange={e=>F({notes:e.target.value})} />
+                  </div>
+                </div>
+              )}
+
+              {/* Tab: אנשי קשר */}
+              {modalTab==='contacts' && (
+                <div>
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="text-xs text-zinc-400">כל אנשי הקשר בחברה — הסוכן יזהה אותם לפי מספר/מייל</div>
+                    <button onClick={addContact} className="text-sm text-amber-400 hover:text-amber-300 bg-transparent border-0 cursor-pointer font-medium">+ הוסף איש קשר</button>
+                  </div>
+                  {(form.contacts||[]).length===0 && (
+                    <div className="text-center py-8 text-zinc-500 text-sm">אין אנשי קשר — לחץ ״+ הוסף איש קשר״</div>
+                  )}
+                  <div className="space-y-3">
+                    {(form.contacts||[]).map(ct=>(
+                      <div key={ct.id} className="p-3 rounded-lg bg-zinc-800/60 border border-zinc-700">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className={CL.label}>שם מלא</label>
+                            <input className={CL.input} placeholder="ישראל ישראלי" value={ct.name} onChange={e=>updateContact(ct.id,{name:e.target.value})} />
+                          </div>
+                          <div>
+                            <label className={CL.label}>תפקיד</label>
+                            <input className={CL.input} placeholder="מנהל שיווק" value={ct.role} onChange={e=>updateContact(ct.id,{role:e.target.value})} />
+                          </div>
+                          <div>
+                            <label className={CL.label}>טלפון (כולל קידומת: 972...)</label>
+                            <input className={CL.input} placeholder="972501234567" value={ct.phone} onChange={e=>updateContact(ct.id,{phone:e.target.value})} />
+                          </div>
+                          <div>
+                            <label className={CL.label}>אימייל</label>
+                            <input type="email" className={CL.input} value={ct.email} onChange={e=>updateContact(ct.id,{email:e.target.value})} />
+                          </div>
+                          <div className="flex items-center gap-5 pt-1">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input type="checkbox" checked={!!ct.hasWhatsapp} onChange={e=>updateContact(ct.id,{hasWhatsapp:e.target.checked})} />
+                              <span className="text-xs text-zinc-300">📱 WhatsApp</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input type="checkbox" checked={!!ct.isPrimary} onChange={e=>updateContact(ct.id,{isPrimary:e.target.checked})} />
+                              <span className="text-xs text-zinc-300">⭐ ראשי</span>
+                            </label>
+                          </div>
+                          <div className="flex items-end justify-end">
+                            <button onClick={()=>removeContact(ct.id)} className="text-xs text-red-400 hover:text-red-300 bg-transparent border-0 cursor-pointer">✕ הסר</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Tab: קבוצות WhatsApp */}
+              {modalTab==='groups' && (
+                <div>
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="text-xs text-zinc-400">קבוצות WhatsApp הפקה — הסוכן עוקב אחריהן ומקשר להתכתבויות</div>
+                    <button onClick={addGroup} className="text-sm text-amber-400 hover:text-amber-300 bg-transparent border-0 cursor-pointer font-medium">+ הוסף קבוצה</button>
+                  </div>
+                  {(form.whatsappGroups||[]).length===0 && (
+                    <div className="text-center py-8 text-zinc-500 text-sm">
+                      <div className="text-2xl mb-2">📱</div>
+                      <div>אין קבוצות — הוסף קבוצות הפקה שמתנהלות מול הלקוח</div>
+                    </div>
+                  )}
+                  <div className="space-y-3">
+                    {(form.whatsappGroups||[]).map(grp=>(
+                      <div key={grp.id} className="p-3 rounded-lg bg-zinc-800/60 border border-zinc-700">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className={CL.label}>שם הקבוצה</label>
+                            <input className={CL.input} placeholder="הפקה — שם לקוח" value={grp.name} onChange={e=>updateGroup(grp.id,{name:e.target.value})} />
+                          </div>
+                          <div>
+                            <label className={CL.label}>סוג</label>
+                            <select className={CL.input} value={grp.type} onChange={e=>updateGroup(grp.id,{type:e.target.value})}>
+                              <option value="production">🎬 הפקה</option>
+                              <option value="updates">📢 עדכונים</option>
+                              <option value="general">💬 כללי</option>
+                            </select>
+                          </div>
+                          <div className="col-span-2">
+                            <label className={CL.label}>Group ID (מ-WhatsApp API)</label>
+                            <input className={CL.input} placeholder="120363XXXXXXXXXX@g.us" value={grp.groupId} onChange={e=>updateGroup(grp.id,{groupId:e.target.value})} />
+                            <div className="text-xs text-zinc-500 mt-1">💡 שלח הודעה לקבוצה דרך ה-API כדי לקבל את ה-ID האמיתי</div>
+                          </div>
+                          <div className="col-span-2 flex justify-end">
+                            <button onClick={()=>removeGroup(grp.id)} className="text-xs text-red-400 hover:text-red-300 bg-transparent border-0 cursor-pointer">✕ הסר קבוצה</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -6604,6 +6726,7 @@
           case 'profitability':  return <ClientProfitability role={role} clients={clients} tasks={tasks} suppliers={suppliers} expenses={expenses} projects={projects} />;
           case 'team':           return <TeamStatus user={user} role={role} tasks={tasks} employees={employees} suppliers={suppliers} onNav={setSection} />;
           case 'archive':     return <Archive user={user} role={role} employees={employees} suppliers={suppliers} />;
+          case 'agent':       return <Agent user={user} role={role} clients={clients} tasks={tasks} />;
           default:            return null;
         }
       };
@@ -7968,6 +8091,224 @@
               )}
             </div>
           </div>
+        </div>
+      );
+    }
+
+    /* ── AGENT ── */
+    function Agent({ user, role, clients=[], tasks=[] }) {
+      const [logs,        setLogs]        = useState([]);
+      const [suggestions, setSuggestions] = useState([]);
+      const [loading,     setLoading]     = useState(true);
+      const [configForm,  setConfigForm]  = useState({ webhookToken:'', phoneNumber:'', wapiToken:'', claudeKey:'' });
+      const [showConfig,  setShowConfig]  = useState(false);
+      const [savedConfig, setSavedConfig] = useState(null);
+      const CF = f => setConfigForm(p=>({...p,...f}));
+
+      useEffect(()=>{
+        if (!db||!user) return;
+        const unsub = db.collection('agentConfig').doc(user.uid).onSnapshot(snap=>{
+          if (snap.exists) { const d=snap.data(); setSavedConfig(d); setConfigForm({webhookToken:d.webhookToken||'',phoneNumber:d.phoneNumber||'',wapiToken:d.wapiToken||'',claudeKey:d.claudeKey||''}); }
+        });
+        return unsub;
+      },[user]);
+
+      useEffect(()=>{
+        if (!db||!user) return;
+        const unsub = db.collection('agentLogs').where('userId','==',user.uid)
+          .orderBy('createdAt','desc').limit(60)
+          .onSnapshot(snap=>{ setLogs(snap.docs.map(d=>({id:d.id,...d.data()}))); setLoading(false); }, ()=>setLoading(false));
+        return unsub;
+      },[user]);
+
+      useEffect(()=>{
+        if (!db||!user) return;
+        const unsub = db.collection('agentSuggestions').where('userId','==',user.uid).where('status','==','pending')
+          .orderBy('createdAt','desc').limit(20)
+          .onSnapshot(snap=>setSuggestions(snap.docs.map(d=>({id:d.id,...d.data()}))), ()=>{});
+        return unsub;
+      },[user]);
+
+      const saveConfig = async () => {
+        await db.collection('agentConfig').doc(user.uid).set({ ...configForm, userId:user.uid, updatedAt:firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+        setShowConfig(false);
+      };
+
+      const acceptSuggestion = async sug => {
+        await db.collection('tasks').add({ title:sug.taskTitle, client:sug.clientName||'', stage:1, priority:'medium',
+          notes:`🤖 נוצר מהסוכן:\n${sug.messageSnippet||''}`, userId:user.uid, createdAt:firebase.firestore.FieldValue.serverTimestamp() });
+        await db.collection('agentSuggestions').doc(sug.id).update({ status:'accepted' });
+        await db.collection('agentLogs').doc(sug.logId||'_').update({ status:'task_created' }).catch(()=>{});
+      };
+
+      const rejectSuggestion = async sug => {
+        await db.collection('agentSuggestions').doc(sug.id).update({ status:'rejected' });
+      };
+
+      // Phone → client+contact lookup map
+      const phoneMap = {};
+      clients.forEach(c=>{
+        (c.contacts||[]).forEach(ct=>{
+          const clean = (ct.phone||'').replace(/\D/g,'');
+          if (clean) phoneMap[clean] = { clientName:c.name, contactName:ct.name, contactRole:ct.role };
+        });
+        // Also legacy
+        if (c.contactPhone && !phoneMap[(c.contactPhone||'').replace(/\D/g,'')]) {
+          phoneMap[(c.contactPhone||'').replace(/\D/g,'')] = { clientName:c.name, contactName:c.contactName||'', contactRole:'' };
+        }
+      });
+
+      const webhookUrl = 'https://crm.tingil.co/agent/webhook';
+      const isConfigured = !!savedConfig?.phoneNumber;
+
+      const sourceIcon  = t => t==='whatsapp'?'📱':t==='email'?'📧':'💬';
+      const statusBadge = s => s==='task_created'?{bg:'bg-emerald-500/20',text:'text-emerald-400',label:'✓ משימה נוצרה'}:
+                               s==='suggested'?{bg:'bg-amber-500/20',text:'text-amber-400',label:'💡 הוצע'}:
+                               s==='no_action'?{bg:'bg-zinc-800',text:'text-zinc-500',label:'—'}:
+                               {bg:'bg-zinc-800',text:'text-zinc-500',label:s||''};
+
+      return (
+        <div>
+          <SectionTitle title="🤖 סוכן CRM" sub="מעקב WhatsApp ומייל — הצעות משימות אוטומטיות" onAdd={()=>setShowConfig(true)} addLabel="⚙️ הגדרות" />
+
+          {/* Stats row */}
+          <div className="grid grid-cols-4 gap-3 mb-6">
+            {[
+              { v:suggestions.length,                            label:'ממתין לאישור',      color:'text-amber-400' },
+              { v:logs.filter(l=>l.type==='whatsapp').length,   label:'WhatsApp',           color:'text-green-400' },
+              { v:logs.filter(l=>l.type==='email').length,       label:'מיילים',             color:'text-blue-400' },
+              { v:logs.filter(l=>l.status==='task_created').length, label:'משימות נוצרו',   color:'text-emerald-400' },
+            ].map((s,i)=>(
+              <div key={i} className="bg-zinc-900/60 rounded-xl border border-zinc-800 p-4">
+                <div className={`text-2xl font-bold ${s.color}`}>{s.v}</div>
+                <div className="text-xs text-zinc-400 mt-1">{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Setup warning */}
+          {!isConfigured && (
+            <div className="mb-6 p-4 rounded-xl bg-amber-400/10 border border-amber-400/30">
+              <div className="font-semibold text-amber-400 mb-1">🔧 נדרשת הגדרה ראשונית</div>
+              <div className="text-sm text-zinc-300 mb-3">חבר את WhatsApp Business API (Meta) כדי שהסוכן יוכל לקלוט הודעות ולהציע משימות.</div>
+              <div className="text-xs text-zinc-400 mb-3">כתובת Webhook: <code className="text-amber-400 bg-zinc-800 px-2 py-0.5 rounded">{webhookUrl}</code></div>
+              <button onClick={()=>setShowConfig(true)} className={CL.btn}>פתח הגדרות</button>
+            </div>
+          )}
+
+          {/* Pending suggestions */}
+          {suggestions.length>0 && (
+            <div className="mb-6">
+              <div className="text-sm font-semibold text-white mb-3">💡 הצעות למשימות — ממתינות לאישור</div>
+              <div className="space-y-2">
+                {suggestions.map(sug=>{
+                  const sender = phoneMap[(sug.from||'').replace(/\D/g,'')] || { clientName:sug.clientName||sug.from, contactName:null };
+                  return (
+                    <div key={sug.id} className="bg-zinc-900/60 rounded-xl border border-amber-400/25 p-4">
+                      <div className="flex items-start gap-3">
+                        <span className="text-xl mt-0.5">{sourceIcon(sug.source)}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-white font-semibold text-sm">{sug.taskTitle}</div>
+                          <div className="text-xs text-zinc-400 mt-0.5">
+                            {sender.clientName && <span className="text-amber-400">{sender.clientName}</span>}
+                            {sender.contactName && <span className="text-zinc-400"> · {sender.contactName}</span>}
+                          </div>
+                          <div className="text-xs text-zinc-500 mt-1 italic line-clamp-2">"{(sug.messageSnippet||'').slice(0,120)}"</div>
+                          <div className="flex gap-3 mt-1">
+                            {sug.topics?.map((t,i)=><span key={i} className="text-xs px-1.5 py-0.5 bg-zinc-800 text-zinc-400 rounded">{t}</span>)}
+                            <span className="text-xs text-zinc-600">ביטחון: {sug.confidence}%</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1.5 flex-shrink-0">
+                          <button onClick={()=>acceptSuggestion(sug)} className="text-xs px-3 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-lg cursor-pointer hover:bg-emerald-500/30 whitespace-nowrap">✓ צור משימה</button>
+                          <button onClick={()=>rejectSuggestion(sug)} className="text-xs px-3 py-1.5 bg-zinc-800 text-zinc-400 border border-zinc-700 rounded-lg cursor-pointer hover:bg-zinc-700">✕ דחה</button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Activity log */}
+          <div>
+            <div className="text-sm font-semibold text-white mb-3">📋 לוג פעילות</div>
+            {loading && <div className="text-center py-8 text-zinc-400 text-sm">טוען...</div>}
+            {!loading && logs.length===0 && (
+              <div className="text-center py-12 text-zinc-500 text-sm">
+                <div className="text-4xl mb-3">🤖</div>
+                <div className="font-medium">הסוכן מוכן — ממתין להודעות</div>
+                <div className="text-xs mt-1 text-zinc-600">כאשר יגיעו הודעות WhatsApp או מיילים הן יופיעו כאן</div>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              {logs.map(log=>{
+                const sender = phoneMap[(log.from||'').replace(/\D/g,'')] || { clientName:log.from, contactName:null };
+                const sb = statusBadge(log.status);
+                const ts = log.createdAt?.toDate?.();
+                return (
+                  <div key={log.id} className="flex gap-3 p-3 rounded-lg border border-zinc-800/60 hover:bg-zinc-900/40">
+                    <span className="text-xl flex-shrink-0">{sourceIcon(log.type)}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-white">{sender.clientName||log.from||'?'}</span>
+                        {sender.contactName && <span className="text-xs text-zinc-400">· {sender.contactName}</span>}
+                        {log.topics?.length>0 && log.topics.map((t,i)=><span key={i} className="text-xs px-1.5 py-0.5 bg-zinc-800 text-zinc-500 rounded">{t}</span>)}
+                        <span className="text-xs text-zinc-600 mr-auto">{ts?ts.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}):''}</span>
+                      </div>
+                      <div className="text-xs text-zinc-400 mt-0.5 truncate">{(log.message||'').slice(0,120)}</div>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full self-start flex-shrink-0 ${sb.bg} ${sb.text}`}>{sb.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Config modal */}
+          {showConfig && (
+            <Modal title="⚙️ הגדרות סוכן CRM" onClose={()=>setShowConfig(false)} wide>
+              <div className="space-y-4">
+                <div className="p-3 bg-zinc-800/60 rounded-lg">
+                  <div className="text-xs font-semibold text-zinc-300 mb-1">כתובת Webhook (Meta WhatsApp):</div>
+                  <code className="text-amber-400 text-xs">{webhookUrl}</code>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={CL.label}>מספר WhatsApp Business</label>
+                    <input className={CL.input} placeholder="972501234567" value={configForm.phoneNumber} onChange={e=>CF({phoneNumber:e.target.value})} />
+                  </div>
+                  <div>
+                    <label className={CL.label}>Webhook Verify Token</label>
+                    <input className={CL.input} placeholder="סיסמה סודית לאימות" value={configForm.webhookToken} onChange={e=>CF({webhookToken:e.target.value})} />
+                  </div>
+                  <div>
+                    <label className={CL.label}>WhatsApp API Token (Meta)</label>
+                    <input className={CL.input} placeholder="EAA..." value={configForm.wapiToken} onChange={e=>CF({wapiToken:e.target.value})} />
+                  </div>
+                  <div>
+                    <label className={CL.label}>Claude API Key (לניתוח AI)</label>
+                    <input className={CL.input} type="password" placeholder="sk-ant-..." value={configForm.claudeKey} onChange={e=>CF({claudeKey:e.target.value})} />
+                  </div>
+                </div>
+                <div className="p-3 bg-zinc-800/40 rounded-lg">
+                  <div className="text-xs font-semibold text-zinc-300 mb-2">📋 הוראות הגדרה (Meta WhatsApp Cloud API — חינמי):</div>
+                  <ol className="text-xs text-zinc-400 space-y-1 list-decimal list-inside">
+                    <li>נכנס ל-developers.facebook.com → צור App → WhatsApp</li>
+                    <li>הוסף מספר טלפון → קבל API Token</li>
+                    <li>ב-Webhooks הכנס את כתובת ה-Webhook למעלה + Verify Token</li>
+                    <li>בחר לנטר: messages</li>
+                    <li>הדבק את ה-API Token ו-Claude Key למעלה ולחץ שמור</li>
+                  </ol>
+                </div>
+                <div className="flex gap-2 justify-end pt-2">
+                  <button onClick={()=>setShowConfig(false)} className={CL.btn2}>ביטול</button>
+                  <button onClick={saveConfig} className={CL.btn}>שמור הגדרות</button>
+                </div>
+              </div>
+            </Modal>
+          )}
         </div>
       );
     }

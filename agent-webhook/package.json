@@ -1,0 +1,16 @@
+{
+  "name": "ting-crm-agent",
+  "version": "1.0.0",
+  "description": "TING MEDIA CRM — WhatsApp Agent Webhook",
+  "main": "webhook.js",
+  "scripts": {
+    "start": "node webhook.js",
+    "dev": "nodemon webhook.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "@anthropic-ai/sdk": "^0.24.0",
+    "firebase-admin": "^12.0.0"
+  }
+}
