@@ -1,0 +1,20 @@
+[Unit]
+Description=TING Media — Drive Video Proxy
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/ting-drive-proxy
+ExecStart=/opt/ting-drive-proxy/venv/bin/uvicorn server:app --host 127.0.0.1 --port 8001 --workers 2
+Restart=always
+RestartSec=5
+Environment=GOOGLE_SERVICE_ACCOUNT_KEY=/etc/ting-drive/service-account.json
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ting-drive-proxy
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TING MEDIA — סקירת וידאו</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design System: Soft UI Evolution, Dark Premium ─────────────── */
+    :root {
+      --bg:           #0a0a0f;
+      --surface:      #111118;
+      --surface2:     #18181f;
+      --border:       #222230;
+      --border2:      #2e2e40;
+      --text:         #f0f0f5;
+      --text-sub:     #9090aa;
+      --text-muted:   #555570;
+      --accent:       #6366f1;
+      --accent-glow:  rgba(99,102,241,0.20);
+      --accent-dim:   rgba(99,102,241,0.10);
+      --green:        #10b981;
+      --green-dim:    rgba(16,185,129,0.12);
+      --red:          #ef4444;
+      --radius:       10px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      font-family: 'Heebo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-mark {
+      width: 28px; height: 28px;
+      background: var(--accent); border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 12px; color: #fff;
+      box-shadow: 0 2px 8px var(--accent-glow);
+    }
+    .logo-name { font-weight: 700; font-size: 15px; letter-spacing: 0.5px; }
+    .header-meta { display: flex; align-items: center; gap: 12px; }
+    .version-badge {
+      font-size: 12px; font-weight: 600;
+      background: var(--accent-dim); color: var(--accent);
+      border: 1px solid rgba(99,102,241,0.25);
+      padding: 3px 10px; border-radius: 20px;
+    }
+
+    /* ── Main layout ─────────────────────────────────────────────────── */
+    .layout {
+      display: flex; flex: 1; overflow: hidden; height: calc(100vh - 57px);
+    }
+
+    /* ── Player column ───────────────────────────────────────────────── */
+    .player-col {
+      flex: 1; display: flex; flex-direction: column;
+      background: #000; overflow: hidden; position: relative;
+    }
+    .video-wrap {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      background: #000; position: relative; overflow: hidden;
+    }
+    video {
+      width: 100%; height: 100%; object-fit: contain;
+      max-height: calc(100vh - 57px - 110px);
+    }
+
+    /* loading / error overlay */
+    .video-overlay {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.82);
+      gap: 16px; z-index: 10;
+    }
+    .video-overlay.hidden { display: none; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .overlay-msg { font-size: 14px; color: var(--text-sub); text-align: center; padding: 0 24px; }
+    .overlay-msg.error { color: var(--red); }
+
+    /* ── Controls ────────────────────────────────────────────────────── */
+    .controls {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 20px 14px;
+      flex-shrink: 0;
+    }
+    /* Timeline */
+    .timeline-wrap { position: relative; margin-bottom: 10px; }
+    .timeline {
+      width: 100%; height: 4px;
+      background: var(--border2); border-radius: 2px;
+      cursor: pointer; position: relative;
+    }
+    .timeline-progress {
+      height: 100%; background: var(--accent);
+      border-radius: 2px; pointer-events: none;
+      transition: width 0.1s linear;
+    }
+    .timeline-handle {
+      position: absolute; top: 50%; width: 12px; height: 12px;
+      background: var(--accent); border-radius: 50%;
+      transform: translate(50%, -50%);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+      pointer-events: none; transition: left 0.1s linear;
+    }
+    /* Comment dots on timeline */
+    .timeline-dot {
+      position: absolute; top: 50%; width: 8px; height: 8px;
+      background: var(--text-sub); border: 2px solid var(--surface);
+      border-radius: 50%; transform: translate(50%, -50%);
+      cursor: pointer; transition: background 0.15s, transform 0.15s;
+      z-index: 2;
+    }
+    .timeline-dot:hover { background: var(--accent); transform: translate(50%, -50%) scale(1.4); }
+    /* Time tooltip on hover */
+    .time-tooltip {
+      position: absolute; bottom: 18px; background: var(--surface2);
+      border: 1px solid var(--border2); border-radius: 6px;
+      padding: 3px 8px; font-size: 11px; color: var(--text);
+      pointer-events: none; white-space: nowrap; transform: translateX(50%);
+      display: none;
+    }
+    .timeline-wrap:hover .time-tooltip { display: block; }
+
+    /* Buttons row */
+    .ctrl-row {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .ctrl-time { font-size: 13px; color: var(--text-sub); min-width: 90px; font-variant-numeric: tabular-nums; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      font-family: 'Heebo', sans-serif; cursor: pointer; border: none;
+      transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: var(--accent); color: #fff;
+      box-shadow: 0 2px 8px var(--accent-glow);
+    }
+    .btn-primary:hover { background: #5254e0; }
+    .btn-ghost {
+      background: var(--surface2); color: var(--text-sub);
+      border: 1px solid var(--border2);
+    }
+    .btn-ghost:hover { background: var(--border); color: var(--text); }
+    .btn-approve {
+      background: var(--green); color: #fff;
+      box-shadow: 0 2px 8px rgba(16,185,129,0.25);
+      margin-right: auto;
+    }
+    .btn-approve:hover { background: #0ea573; }
+    .btn-approve:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Volume */
+    .volume-wrap { display: flex; align-items: center; gap: 6px; margin-right: auto; }
+    input[type=range] { -webkit-appearance: none; appearance: none; width: 70px; height: 3px; border-radius: 2px; background: var(--border2); cursor: pointer; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+
+    /* ── Add comment bar ─────────────────────────────────────────────── */
+    .add-comment-bar {
+      background: var(--surface2);
+      border-top: 1px solid var(--border);
+      padding: 12px 20px;
+      display: none;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .add-comment-bar.visible { display: flex; }
+    .comment-input {
+      flex: 1; background: var(--bg); color: var(--text);
+      border: 1px solid var(--border2); border-radius: 8px;
+      padding: 9px 14px; font-size: 14px; font-family: 'Heebo', sans-serif;
+      resize: none; min-height: 38px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .comment-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+    .timecode-tag {
+      font-size: 12px; font-weight: 600; color: var(--accent);
+      background: var(--accent-dim); border: 1px solid rgba(99,102,241,0.2);
+      padding: 3px 9px; border-radius: 6px; white-space: nowrap; align-self: center;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────── */
+    .sidebar {
+      width: 360px; flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    @media (max-width: 900px) {
+      .layout { flex-direction: column; height: auto; overflow: auto; }
+      .sidebar { width: 100%; height: auto; border-right: none; border-top: 1px solid var(--border); }
+      video { max-height: 50vw; }
+    }
+    .sidebar-head {
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .sidebar-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .sidebar-meta { font-size: 12px; color: var(--text-sub); margin-bottom: 10px; }
+
+    /* Filters */
+    .filter-tabs { display: flex; gap: 4px; }
+    .filter-tab {
+      padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;
+      cursor: pointer; border: none; font-family: 'Heebo', sans-serif;
+      background: transparent; color: var(--text-sub);
+      transition: background 0.15s, color 0.15s;
+    }
+    .filter-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .filter-tab.active { background: var(--accent-dim); color: var(--accent); }
+    .filter-tab:hover:not(.active) { background: var(--surface2); color: var(--text); }
+
+    /* Version selector */
+    .version-select {
+      width: 100%; background: var(--surface2); color: var(--text);
+      border: 1px solid var(--border2); border-radius: 8px;
+      padding: 7px 10px; font-size: 13px; font-family: 'Heebo', sans-serif;
+      cursor: pointer; margin-top: 8px;
+    }
+    .version-select:focus { outline: 2px solid var(--accent); }
+
+    /* Comment list */
+    .comment-list { flex: 1; overflow-y: auto; padding: 10px 12px; }
+    .comment-empty {
+      padding: 40px 20px; text-align: center;
+      color: var(--text-muted); font-size: 14px;
+    }
+    .comment-card {
+      padding: 11px 13px; border-radius: 9px;
+      background: var(--surface2); border: 1px solid var(--border);
+      margin-bottom: 8px; cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    }
+    .comment-card:hover { border-color: var(--border2); background: #1e1e28; }
+    .comment-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+    .comment-card.resolved { opacity: 0.45; }
+
+    .comment-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .comment-tc {
+      font-size: 11px; font-weight: 700; color: var(--accent);
+      background: var(--accent-dim); padding: 2px 7px; border-radius: 5px;
+      flex-shrink: 0; cursor: pointer;
+    }
+    .comment-author { font-size: 12px; color: var(--text-sub); flex: 1; }
+    .comment-text { font-size: 13.5px; line-height: 1.55; color: var(--text); }
+    .comment-actions { display: flex; gap: 6px; margin-top: 8px; }
+    .comment-action-btn {
+      font-size: 11px; padding: 3px 9px; border-radius: 5px; cursor: pointer;
+      border: 1px solid var(--border2); background: transparent; color: var(--text-sub);
+      font-family: 'Heebo', sans-serif; transition: all 0.15s;
+    }
+    .comment-action-btn:hover { background: var(--border2); color: var(--text); }
+    .comment-action-btn.resolve { color: var(--green); border-color: rgba(16,185,129,0.3); }
+    .comment-action-btn.resolve:hover { background: var(--green-dim); }
+
+    /* ── Approve banner ──────────────────────────────────────────────── */
+    .approve-banner {
+      padding: 14px 16px; border-top: 1px solid var(--border);
+      background: var(--surface); flex-shrink: 0;
+    }
+    .approve-hint { font-size: 12px; color: var(--text-sub); margin-bottom: 8px; }
+
+    /* ── Toast ───────────────────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: var(--surface2); border: 1px solid var(--border2);
+      color: var(--text); padding: 10px 20px; border-radius: 10px;
+      font-size: 13px; font-weight: 500; z-index: 9999;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      opacity: 0; transition: opacity 0.2s; pointer-events: none;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ── Approved overlay ────────────────────────────────────────────── */
+    #approved-overlay {
+      display: none; position: fixed; inset: 0; z-index: 999;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center;
+    }
+    #approved-overlay.show { display: flex; }
+    .approved-card {
+      background: var(--surface2); border: 1px solid rgba(16,185,129,0.4);
+      border-radius: 16px; padding: 40px 48px; text-align: center; max-width: 360px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(16,185,129,0.1);
+    }
+    .approved-icon { font-size: 48px; margin-bottom: 16px; }
+    .approved-title { font-size: 22px; font-weight: 800; margin-bottom: 8px; color: var(--green); }
+    .approved-sub { font-size: 14px; color: var(--text-sub); line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-mark">T</div>
+    <span class="logo-name">TING MEDIA</span>
+  </div>
+  <div class="header-meta">
+    <span class="version-badge" id="header-version">טוען...</span>
+  </div>
+</header>
+
+<!-- Main layout -->
+<div class="layout">
+
+  <!-- Player column -->
+  <div class="player-col">
+    <div class="video-wrap">
+      <video id="video" preload="metadata" playsinline></video>
+      <div class="video-overlay" id="video-overlay">
+        <div class="spinner" id="overlay-spinner"></div>
+        <div class="overlay-msg" id="overlay-msg">טוען וידאו...</div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <div class="timeline-wrap" id="timeline-wrap">
+        <div class="timeline" id="timeline">
+          <div class="timeline-progress" id="timeline-progress" style="width:0%"></div>
+          <div class="timeline-handle"   id="timeline-handle"   style="left:0%"></div>
+        </div>
+        <div class="time-tooltip" id="time-tooltip">0:00</div>
+        <!-- Comment dots injected here by JS -->
+      </div>
+      <div class="ctrl-row">
+        <button class="btn btn-ghost" id="play-btn" onclick="togglePlay()" aria-label="נגן/עצור">
+          <svg id="play-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <svg id="pause-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        </button>
+        <div class="volume-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--text-sub)"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.8-1-3.3-2.5-4v8c1.5-.7 2.5-2.2 2.5-4z"/></svg>
+          <input type="range" id="volume" min="0" max="1" step="0.05" value="1" aria-label="עוצמת קול" oninput="setVolume(this.value)">
+        </div>
+        <span class="ctrl-time" id="ctrl-time">0:00 / 0:00</span>
+        <button class="btn btn-primary" id="comment-btn" onclick="startComment()" style="margin-right:auto">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+          עצור ← הוסף הערה
+        </button>
+      </div>
+    </div>
+
+    <!-- Add comment bar -->
+    <div class="add-comment-bar" id="add-comment-bar">
+      <span class="timecode-tag" id="comment-tc-tag">0:00</span>
+      <textarea class="comment-input" id="comment-input" rows="1"
+        placeholder="כתוב הערה... (Enter לשמירה, Shift+Enter לשורה חדשה)"
+        onkeydown="handleCommentKey(event)"></textarea>
+      <button class="btn btn-primary" onclick="submitComment()">שמור</button>
+      <button class="btn btn-ghost" onclick="cancelComment()">בטל</button>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="sidebar-title" id="review-title">טוען...</div>
+      <div class="sidebar-meta" id="review-meta"></div>
+
+      <!-- Filters -->
+      <div class="filter-tabs" role="tablist">
+        <button class="filter-tab active" onclick="setFilter('open')"   id="tab-open"     role="tab" aria-selected="true">פתוחות</button>
+        <button class="filter-tab"        onclick="setFilter('resolved')" id="tab-resolved" role="tab">נפתרו</button>
+        <button class="filter-tab"        onclick="setFilter('all')"    id="tab-all"      role="tab">הכל</button>
+      </div>
+
+      <!-- Version selector -->
+      <select class="version-select" id="version-select" onchange="switchVersion(this.value)" aria-label="בחר גרסה"></select>
+    </div>
+
+    <!-- Comment list -->
+    <div class="comment-list" id="comment-list">
+      <div class="comment-empty">טוען הערות...</div>
+    </div>
+
+    <!-- Approve banner (shown only if permissions = 'approve') -->
+    <div class="approve-banner" id="approve-banner" style="display:none">
+      <div class="approve-hint">כל ההערות נפתרו? אשר את הגרסה הנוכחית:</div>
+      <button class="btn btn-approve" id="approve-btn" onclick="approveVersion()" style="width:100%">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+        אשר גרסה
+      </button>
+    </div>
+  </aside>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Approved overlay -->
+<div id="approved-overlay">
+  <div class="approved-card">
+    <div class="approved-icon">✅</div>
+    <div class="approved-title">הגרסה אושרה!</div>
+    <div class="approved-sub">תודה — קיבלנו את האישור שלך.<br>הצוות יקבל הודעה ויתקדם לשלב הבא.</div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════
+   TING Review — Client Page JS
+   ════════════════════════════════════════════════════════ */
+
+const TOKEN      = location.pathname.replace(/^\/r\//, '').replace(/\/$/, '');
+const BASE       = location.origin;
+const API        = `${BASE}/api/r/${TOKEN}`;
+
+let reviewData   = null;   // full payload from /api/r/{token}
+let comments     = [];
+let currentFilter = 'open';
+let selectedVersionId = null;   // null = current
+let pendingTimecode   = null;
+let eventSource       = null;
+let approved          = false;
+
+/* ── Utils ────────────────────────────────────────────────────────── */
+
+function fmt(s) {
+  if (!isFinite(s) || s < 0) return '0:00';
+  const m = Math.floor(s / 60), ss = Math.floor(s % 60).toString().padStart(2,'0');
+  return `${m}:${ss}`;
+}
+
+function showToast(msg, duration = 2800) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function setOverlay(visible, msg = '', isError = false) {
+  const ov  = document.getElementById('video-overlay');
+  const sp  = document.getElementById('overlay-spinner');
+  const omsg = document.getElementById('overlay-msg');
+  if (visible) {
+    ov.classList.remove('hidden');
+    sp.style.display   = isError ? 'none' : '';
+    omsg.textContent   = msg;
+    omsg.className     = 'overlay-msg' + (isError ? ' error' : '');
+  } else {
+    ov.classList.add('hidden');
+  }
+}
+
+/* ── Load review ──────────────────────────────────────────────────── */
+
+async function loadReview() {
+  try {
+    const res = await fetch(API);
+    if (!res.ok) throw new Error(await res.text());
+    reviewData = await res.json();
+    renderHeader();
+    renderVersionSelect();
+    loadVideo(reviewData.video_url);
+    await loadComments();
+    if (reviewData.permissions === 'approve') {
+      document.getElementById('approve-banner').style.display = '';
+    }
+    connectSSE();
+  } catch(e) {
+    setOverlay(true, 'שגיאה בטעינת הסקירה: ' + e.message, true);
+    document.getElementById('review-title').textContent = 'שגיאה';
+  }
+}
+
+function renderHeader() {
+  const r = reviewData.review;
+  document.title                       = `${r.title} — TING Review`;
+  document.getElementById('review-title').textContent = r.title;
+  document.getElementById('header-version').textContent =
+    `גרסה ${r.current_version}`;
+  const statusMap = {
+    draft: 'טיוטה', in_review: 'בסקירה', approved: 'אושר',
+    changes_requested: 'נדרשים תיקונים'
+  };
+  document.getElementById('review-meta').textContent =
+    `סבב ${r.current_round} · ${statusMap[r.status] || r.status}`;
+}
+
+function renderVersionSelect() {
+  const sel = document.getElementById('version-select');
+  sel.innerHTML = '';
+  (reviewData.versions || []).slice().reverse().forEach(v => {
+    const opt = document.createElement('option');
+    opt.value       = v.id;
+    opt.textContent = `גרסה ${v.version_number}${v.is_current ? ' (נוכחית)' : ''}${v.note ? ' — ' + v.note : ''}`;
+    if (v.is_current) { opt.selected = true; selectedVersionId = v.id; }
+    sel.appendChild(opt);
+  });
+  if (!reviewData.versions?.length) sel.style.display = 'none';
+}
+
+/* ── Video ────────────────────────────────────────────────────────── */
+
+function loadVideo(url) {
+  const vid = document.getElementById('video');
+  if (!url) {
+    setOverlay(true, 'לא קושר וידאו לסקירה זו', true);
+    return;
+  }
+  setOverlay(true, 'טוען וידאו...');
+  vid.src = url;
+
+  vid.addEventListener('loadedmetadata', () => {
+    setOverlay(false);
+    updateTimeline();
+    renderCommentDots();
+  }, { once: true });
+
+  vid.addEventListener('error', () => {
+    const code = vid.error?.code;
+    const msgs = { 1:'הטעינה בוטלה', 2:'שגיאת רשת', 3:'שגיאת קידוד', 4:'הפורמט לא נתמך' };
+    setOverlay(true, 'שגיאה בטעינת הוידאו: ' + (msgs[code] || 'שגיאה לא ידועה') +
+      '\nנסה לרענן את הדף', true);
+  });
+
+  vid.addEventListener('timeupdate', updateTimeline);
+  vid.addEventListener('play',  () => {
+    document.getElementById('play-icon').style.display  = 'none';
+    document.getElementById('pause-icon').style.display = '';
+  });
+  vid.addEventListener('pause', () => {
+    document.getElementById('play-icon').style.display  = '';
+    document.getElementById('pause-icon').style.display = 'none';
+  });
+  vid.addEventListener('ended', () => {
+    document.getElementById('play-icon').style.display  = '';
+    document.getElementById('pause-icon').style.display = 'none';
+  });
+
+  // prefers-reduced-motion
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    vid.style.transition = 'none';
+  }
+}
+
+function togglePlay() {
+  const vid = document.getElementById('video');
+  if (vid.paused) vid.play(); else vid.pause();
+}
+
+function setVolume(v) {
+  document.getElementById('video').volume = parseFloat(v);
+}
+
+function updateTimeline() {
+  const vid = document.getElementById('video');
+  if (!vid.duration) return;
+  const pct = (vid.currentTime / vid.duration * 100).toFixed(2);
+  document.getElementById('timeline-progress').style.width = pct + '%';
+  document.getElementById('timeline-handle').style.left    = pct + '%';
+  document.getElementById('ctrl-time').textContent =
+    `${fmt(vid.currentTime)} / ${fmt(vid.duration)}`;
+}
+
+// Timeline click → seek
+document.getElementById('timeline').addEventListener('click', e => {
+  const vid = document.getElementById('video');
+  const rect = e.currentTarget.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  vid.currentTime = ratio * (vid.duration || 0);
+  updateTimeline();
+});
+
+// Timeline hover → tooltip
+document.getElementById('timeline-wrap').addEventListener('mousemove', e => {
+  const tl = document.getElementById('timeline');
+  const tt = document.getElementById('time-tooltip');
+  const rect = tl.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const vid = document.getElementById('video');
+  tt.textContent = fmt(ratio * (vid.duration || 0));
+  tt.style.right = (100 - ratio * 100).toFixed(1) + '%';
+});
+
+/* ── Comments ─────────────────────────────────────────────────────── */
+
+async function loadComments() {
+  const params = selectedVersionId ? `?version_id=${selectedVersionId}` : '';
+  const res = await fetch(`${API}/comments${params}`);
+  comments = await res.json();
+  renderComments();
+  renderCommentDots();
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  ['open','resolved','all'].forEach(id => {
+    document.getElementById('tab-' + id).classList.toggle('active', id === f);
+    document.getElementById('tab-' + id).setAttribute('aria-selected', id === f);
+  });
+  renderComments();
+}
+
+function renderComments() {
+  const list = document.getElementById('comment-list');
+  const filtered = comments.filter(c => {
+    if (currentFilter === 'open')     return !c.resolved;
+    if (currentFilter === 'resolved') return c.resolved;
+    return true;
+  });
+  if (!filtered.length) {
+    list.innerHTML = `<div class="comment-empty">${
+      currentFilter === 'open' ? 'אין הערות פתוחות — מעולה!' :
+      currentFilter === 'resolved' ? 'אין הערות שנפתרו עדיין' : 'אין הערות עדיין'
+    }</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(c => `
+    <div class="comment-card${c.resolved ? ' resolved' : ''}" id="cc-${c.id}"
+         onclick="jumpTo(${c.timecode})">
+      <div class="comment-header">
+        <span class="comment-tc" onclick="event.stopPropagation();jumpTo(${c.timecode})"
+              tabindex="0" role="button" aria-label="קפוץ ל-${fmt(c.timecode)}"
+              onkeydown="if(event.key==='Enter'){jumpTo(${c.timecode})}">${fmt(c.timecode)}</span>
+        <span class="comment-author">${escHtml(c.author_name)} · ${relTime(c.created_at)}</span>
+      </div>
+      <div class="comment-text">${escHtml(c.text)}</div>
+      ${reviewData?.permissions === 'approve' || reviewData?.permissions === 'comment' ? `
+      <div class="comment-actions">
+        <button class="comment-action-btn resolve" onclick="event.stopPropagation();toggleResolve('${c.id}',${c.resolved})">
+          ${c.resolved ? '↩ פתח מחדש' : '✓ סמן נפתר'}
+        </button>
+      </div>` : ''}
+    </div>
+  `).join('');
+}
+
+function renderCommentDots() {
+  const vid = document.getElementById('video');
+  const tl  = document.getElementById('timeline');
+  // Remove old dots
+  tl.querySelectorAll('.timeline-dot').forEach(d => d.remove());
+  if (!vid.duration || !comments.length) return;
+  comments.forEach(c => {
+    if (c.resolved) return;
+    const pct = (c.timecode / vid.duration * 100).toFixed(2);
+    const dot = document.createElement('div');
+    dot.className = 'timeline-dot';
+    dot.style.right = (100 - parseFloat(pct)).toFixed(2) + '%';
+    dot.title = fmt(c.timecode) + ': ' + c.text.slice(0, 60);
+    dot.setAttribute('tabindex', '0');
+    dot.setAttribute('role', 'button');
+    dot.setAttribute('aria-label', `הערה ב-${fmt(c.timecode)}`);
+    dot.onclick = e => { e.stopPropagation(); jumpTo(c.timecode); };
+    dot.onkeydown = e => { if(e.key==='Enter') jumpTo(c.timecode); };
+    tl.appendChild(dot);
+  });
+}
+
+function jumpTo(tc) {
+  const vid = document.getElementById('video');
+  vid.currentTime = tc;
+  vid.pause();
+  // Highlight active comment card
+  document.querySelectorAll('.comment-card').forEach(el => el.classList.remove('active'));
+  const active = document.querySelector(`[onclick="jumpTo(${tc})"]`);
+  if (active) {
+    active.classList.add('active');
+    active.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function relTime(iso) {
+  if (!iso) return '';
+  const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (diff < 60)   return 'עכשיו';
+  if (diff < 3600) return `לפני ${Math.floor(diff/60)} דק'`;
+  if (diff < 86400) return `לפני ${Math.floor(diff/3600)} ש'`;
+  return `לפני ${Math.floor(diff/86400)} ימים`;
+}
+
+/* ── Add comment ──────────────────────────────────────────────────── */
+
+function startComment() {
+  const vid = document.getElementById('video');
+  vid.pause();
+  pendingTimecode = vid.currentTime;
+  document.getElementById('comment-tc-tag').textContent = fmt(pendingTimecode);
+  const bar = document.getElementById('add-comment-bar');
+  bar.classList.add('visible');
+  setTimeout(() => document.getElementById('comment-input').focus(), 50);
+}
+
+function cancelComment() {
+  pendingTimecode = null;
+  document.getElementById('comment-input').value = '';
+  document.getElementById('add-comment-bar').classList.remove('visible');
+}
+
+function handleCommentKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment(); }
+  if (e.key === 'Escape') cancelComment();
+}
+
+async function submitComment() {
+  const text = document.getElementById('comment-input').value.trim();
+  if (!text || pendingTimecode === null) return;
+  const clientName = reviewData?.client_name || 'לקוח';
+  const btn = document.querySelector('.add-comment-bar .btn-primary');
+  btn.disabled = true; btn.textContent = 'שומר...';
+  try {
+    const res = await fetch(`${API}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        timecode:    pendingTimecode,
+        text:        text,
+        author_name: clientName,
+        version_id:  selectedVersionId,
+      })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    cancelComment();
+    await loadComments();
+    showToast('ההערה נשמרה ✓');
+  } catch(e) {
+    showToast('שגיאה בשמירת ההערה: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'שמור';
+  }
+}
+
+/* ── Toggle resolve ───────────────────────────────────────────────── */
+
+async function toggleResolve(commentId, currentResolved) {
+  try {
+    await fetch(`${BASE}/api/team/comments/${commentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-Team-Token': '__CLIENT_RESOLVE__' },
+      body: JSON.stringify({ resolved: !currentResolved })
+    });
+    await loadComments();
+  } catch(e) { showToast('שגיאה'); }
+}
+
+/* ── Switch version ───────────────────────────────────────────────── */
+
+async function switchVersion(versionId) {
+  selectedVersionId = versionId;
+  // Find version data
+  const v = reviewData?.versions?.find(x => x.id === versionId);
+  if (v && reviewData?.review) {
+    // Build a new signed URL for this version
+    // Re-fetch review data to get the video URL for this version
+    await loadComments();
+    showToast(`מציג גרסה ${v.version_number}`);
+  }
+}
+
+/* ── Approve ──────────────────────────────────────────────────────── */
+
+async function approveVersion() {
+  if (approved) return;
+  if (!confirm('אשר את הגרסה הנוכחית? לא ניתן לבטל פעולה זו.')) return;
+  const btn = document.getElementById('approve-btn');
+  btn.disabled = true; btn.textContent = 'שומר אישור...';
+  try {
+    const res = await fetch(`${API}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        note: '',
+        approved_by_name: reviewData?.client_name || 'לקוח',
+      })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    approved = true;
+    document.getElementById('approved-overlay').classList.add('show');
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'אשר גרסה';
+    showToast('שגיאה באישור: ' + e.message);
+  }
+}
+
+/* ── SSE ──────────────────────────────────────────────────────────── */
+
+function connectSSE() {
+  if (eventSource) eventSource.close();
+  eventSource = new EventSource(`${API}/stream`);
+  eventSource.onmessage = async (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.type === 'new_comment') {
+        await loadComments();
+        showToast('הערה חדשה התקבלה');
+      } else if (data.type === 'approved') {
+        showToast('הגרסה אושרה ✓');
+      }
+    } catch {}
+  };
+  eventSource.onerror = () => {
+    // SSE reconnects automatically. Fallback: poll every 8s
+    setTimeout(() => { if (eventSource.readyState === EventSource.CLOSED) connectSSE(); }, 8000);
+  };
+}
+
+/* ── Keyboard shortcuts ───────────────────────────────────────────── */
+
+document.addEventListener('keydown', e => {
+  const tag = e.target.tagName;
+  if (['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
+  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  if (e.code === 'ArrowRight') { const v = document.getElementById('video'); v.currentTime = Math.max(0, v.currentTime - 5); }
+  if (e.code === 'ArrowLeft')  { const v = document.getElementById('video'); v.currentTime = Math.min(v.duration||0, v.currentTime + 5); }
+  if (e.key === 'c' || e.key === 'C') { if (!document.getElementById('add-comment-bar').classList.contains('visible')) startComment(); }
+  if (e.key === 'Escape') cancelComment();
+});
+
+/* ── Init ─────────────────────────────────────────────────────────── */
+loadReview();
+</script>
+</body>
+</html>
