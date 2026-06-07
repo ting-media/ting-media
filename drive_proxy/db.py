@@ -107,7 +107,9 @@ CREATE INDEX IF NOT EXISTS idx_versions_review   ON versions(review_id);
 
 def init_db():
     """Create tables if they don't exist. Safe to call on every startup."""
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    parent = os.path.dirname(DB_PATH)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
     with get_conn() as conn:
         conn.executescript(SCHEMA)
 

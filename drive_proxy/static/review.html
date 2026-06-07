@@ -762,27 +762,33 @@ async function submitComment() {
 
 async function toggleResolve(commentId, currentResolved) {
   try {
-    await fetch(`${BASE}/api/team/comments/${commentId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'X-Team-Token': '__CLIENT_RESOLVE__' },
-      body: JSON.stringify({ resolved: !currentResolved })
-    });
+    const res = await fetch(`${API}/comments/${commentId}`, { method: 'PATCH' });
+    if (!res.ok) throw new Error(await res.text());
     await loadComments();
-  } catch(e) { showToast('שגיאה'); }
+    showToast(currentResolved ? 'הערה נפתחה מחדש' : 'הערה סומנה כנפתרה ✓');
+  } catch(e) { showToast('שגיאה: ' + e.message); }
 }
 
 /* ── Switch version ───────────────────────────────────────────────── */
 
 async function switchVersion(versionId) {
   selectedVersionId = versionId;
-  // Find version data
   const v = reviewData?.versions?.find(x => x.id === versionId);
-  if (v && reviewData?.review) {
-    // Build a new signed URL for this version
-    // Re-fetch review data to get the video URL for this version
-    await loadComments();
-    showToast(`מציג גרסה ${v.version_number}`);
-  }
+  if (!v) return;
+
+  // Re-fetch review data to get a fresh signed URL for this specific version
+  try {
+    const res = await fetch(`${API}?version_id=${encodeURIComponent(versionId)}`);
+    if (res.ok) {
+      const fresh = await res.json();
+      if (fresh.video_url) {
+        loadVideo(fresh.video_url);
+      }
+    }
+  } catch(e) { console.warn('version switch video reload failed:', e); }
+
+  await loadComments();
+  showToast(`מציג גרסה ${v.version_number}`);
 }
 
 /* ── Approve ──────────────────────────────────────────────────────── */

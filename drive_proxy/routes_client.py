@@ -80,10 +80,10 @@ async def client_page(token: str, request: Request):
 # ── Review data ───────────────────────────────────────────────────────────────
 
 @router.get("/api/r/{token}")
-def get_review_data(token: str, request: Request):
+def get_review_data(token: str, request: Request, version_id: Optional[str] = None):
     """
-    Returns review metadata + signed video URL for the current version.
-    This is the first call the client page makes.
+    Returns review metadata + signed video URL.
+    Pass ?version_id=... to get a signed URL for a specific version.
     """
     t = _get_token_or_403(token)
     review = db.get_review(t["review_id"])
@@ -93,13 +93,20 @@ def get_review_data(token: str, request: Request):
     versions = db.list_versions(t["review_id"])
     current_version = db.get_current_version(t["review_id"])
 
+    # If a specific version was requested, use that one for the video URL
+    target_version = current_version
+    if version_id:
+        specific = db.get_version(version_id)
+        if specific and specific["review_id"] == t["review_id"]:
+            target_version = specific
+
     # Build signed video URL
     base = str(request.base_url).rstrip("/")
     signed_video_url = None
-    if current_version and current_version.get("drive_file_id"):
-        signed_video_url = signing.sign_video_url(
-            current_version["drive_file_id"], base
-        )
+    if target_version and target_version.get("drive_file_id"):
+        fid = target_version["drive_file_id"]
+        if not fid.startswith("direct:"):  # skip direct/blob URLs
+            signed_video_url = signing.sign_video_url(fid, base)
 
     return {
         "review": {
@@ -173,6 +180,19 @@ def add_comment(token: str, body: AddCommentBody, request: Request):
 
 
 # ── Approve ───────────────────────────────────────────────────────────────────
+
+@router.patch("/api/r/{token}/comments/{comment_id}")
+def client_resolve_comment(token: str, comment_id: str):
+    """Allow client (with comment/approve permission) to toggle resolved."""
+    t = _get_token_or_403(token)
+    if t["permissions"] not in ("comment", "approve"):
+        raise HTTPException(status_code=403, detail="אין הרשאה")
+    comment = db.get_comment(comment_id)
+    if not comment or comment["review_id"] != t["review_id"]:
+        raise HTTPException(status_code=404)
+    db.resolve_comment(comment_id, not comment["resolved"])
+    return db.get_comment(comment_id)
+
 
 @router.post("/api/r/{token}/approve", status_code=201)
 def approve(token: str, body: ApproveBody):
