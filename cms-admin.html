@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TING MEDIA - CMS ניהול תוכנים</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Heebo', 'Rubik', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0f1b2e;
+            color: #e2e8f0;
+            display: flex;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background: rgba(15, 27, 46, 0.98);
+            border-left: 1px solid rgba(255, 165, 0, 0.3);
+            padding: 20px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 900;
+            color: #FFA500;
+            margin-bottom: 10px;
+        }
+
+        .logo-text {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 5px;
+        }
+
+        .nav-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-section-title {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .nav-button {
+            padding: 10px 12px;
+            background: transparent;
+            border: 1px solid rgba(255, 165, 0, 0.2);
+            color: #cbd5e1;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: right;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .nav-button:hover, .nav-button.active {
+            background: rgba(255, 165, 0, 0.15);
+            border-color: #FFA500;
+            color: #FFA500;
+        }
+
+        .logout-btn {
+            margin-top: auto;
+            background: rgba(220, 38, 38, 0.15);
+            border-color: rgba(220, 38, 38, 0.4);
+            color: #fca5a5;
+        }
+
+        .logout-btn:hover {
+            background: rgba(220, 38, 38, 0.25);
+            border-color: rgba(220, 38, 38, 0.6);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: rgba(15, 27, 46, 0.98);
+            border-bottom: 1px solid rgba(255, 165, 0, 0.3);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #cbd5e1;
+            font-size: 14px;
+        }
+
+        /* Content Area */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        /* Section Titles */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid rgba(255, 165, 0, 0.3);
+        }
+
+        .section-title {
+            font-size: 28px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .add-btn {
+            padding: 10px 16px;
+            background: linear-gradient(135deg, #FFA500, #FF8C00);
+            color: #0f1b2e;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .add-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(255, 165, 0, 0.3);
+        }
+
+        /* Tables */
+        .table-container {
+            background: rgba(20, 35, 55, 0.5);
+            border: 1px solid rgba(255, 165, 0, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: rgba(255, 165, 0, 0.1);
+            border-bottom: 1px solid rgba(255, 165, 0, 0.2);
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: right;
+            font-weight: 600;
+            color: #FFA500;
+            font-size: 13px;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 165, 0, 0.1);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: rgba(255, 165, 0, 0.05);
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-edit, .btn-delete, .btn-upload {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: inherit;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-edit {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        .btn-edit:hover {
+            background: rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-delete {
+            background: rgba(220, 38, 38, 0.2);
+            color: #fca5a5;
+        }
+
+        .btn-delete:hover {
+            background: rgba(220, 38, 38, 0.3);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: rgba(15, 27, 46, 0.95);
+            border: 1px solid rgba(255, 165, 0, 0.3);
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-header {
+            font-size: 24px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #FFA500;
+            font-size: 28px;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(51, 65, 85, 0.8);
+            border: 1px solid rgba(255, 165, 0, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            background: rgba(51, 65, 85, 1);
+            border-color: #FFA500;
+            box-shadow: 0 0 10px rgba(255, 165, 0, 0.2);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            justify-content: flex-end;
+        }
+
+        .btn-save {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #FFA500, #FF8C00);
+            color: #0f1b2e;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: inherit;
+        }
+
+        .btn-cancel {
+            padding: 10px 20px;
+            background: rgba(100, 116, 139, 0.2);
+            color: #cbd5e1;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        /* File Input */
+        .file-input-wrapper {
+            position: relative;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            display: none;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 12px;
+            background: rgba(255, 165, 0, 0.1);
+            border: 2px dashed rgba(255, 165, 0, 0.3);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #cbd5e1;
+        }
+
+        .file-input-label:hover {
+            background: rgba(255, 165, 0, 0.15);
+            border-color: #FFA500;
+        }
+
+        /* Messages */
+        .message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .message.success {
+            background: rgba(34, 197, 94, 0.15);
+            color: #86efac;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            display: block;
+        }
+
+        .message.error {
+            background: rgba(220, 38, 38, 0.15);
+            color: #fca5a5;
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                border-left: none;
+                border-bottom: 1px solid rgba(255, 165, 0, 0.3);
+                flex-direction: row;
+                gap: 10px;
+                overflow-x: auto;
+                padding: 12px;
+            }
+
+            .modal-content {
+                max-width: 95%;
+            }
+
+            .content {
+                padding: 16px;
+            }
+
+            th, td {
+                padding: 8px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div>
+            <div class="logo">📊 TING</div>
+            <div class="logo-text">CMS ניהול תוכנים</div>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">ניהול</div>
+            <button class="nav-button active" data-section="portfolios">📹 פורטפוליו</button>
+            <button class="nav-button" data-section="carousel">🎠 קרוסלה</button>
+            <button class="nav-button" data-section="content">📝 תוכנים</button>
+        </div>
+
+        <button class="nav-button logout-btn" onclick="logout()">🚪 התנתקות</button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-title">ניהול תוכנים</div>
+            <div class="user-info" id="userInfo">משתמש</div>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Portfolios Section -->
+            <div class="section active" data-section="portfolios">
+                <div class="section-header">
+                    <h2 class="section-title">📹 פורטפוליו</h2>
+                    <button class="add-btn" onclick="openPortfolioModal()">+ הוסף וידאו</button>
+                </div>
+
+                <div id="portfolioMessage" class="message"></div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>כותרת</th>
+                                <th>קטגוריה</th>
+                                <th>סטטוס</th>
+                                <th>פעולות</th>
+                            </tr>
+                        </thead>
+                        <tbody id="portfolioTable">
+                            <tr><td colspan="4" style="text-align: center; color: #64748b;">טוען...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Carousel Section -->
+            <div class="section" data-section="carousel">
+                <div class="section-header">
+                    <h2 class="section-title">🎠 קרוסלה</h2>
+                    <button class="add-btn" onclick="openCarouselModal()">+ הוסף פריט</button>
+                </div>
+
+                <div id="carouselMessage" class="message"></div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>כותרת</th>
+                                <th>סדר</th>
+                                <th>פעולות</th>
+                            </tr>
+                        </thead>
+                        <tbody id="carouselTable">
+                            <tr><td colspan="3" style="text-align: center; color: #64748b;">טוען...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Content Section -->
+            <div class="section" data-section="content">
+                <div class="section-header">
+                    <h2 class="section-title">📝 תוכנים</h2>
+                </div>
+
+                <div id="contentMessage" class="message"></div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>סעיף</th>
+                                <th>כותרת</th>
+                                <th>פעולות</th>
+                            </tr>
+                        </thead>
+                        <tbody id="contentTable">
+                            <tr><td colspan="3" style="text-align: center; color: #64748b;">טוען...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Portfolio Modal -->
+    <div class="modal" id="portfolioModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span id="portfolioModalTitle">הוסף וידאו</span>
+                <button class="modal-close" onclick="closeModal('portfolioModal')">&times;</button>
+            </div>
+
+            <form id="portfolioForm">
+                <div class="form-group">
+                    <label>כותרת *</label>
+                    <input type="text" id="portfolioTitle" required>
+                </div>
+
+                <div class="form-group">
+                    <label>תיאור</label>
+                    <textarea id="portfolioDescription"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>קטגוריה *</label>
+                    <select id="portfolioCategory" required>
+                        <option value="">בחר קטגוריה</option>
+                        <option value="Commercial">Commercial Ads</option>
+                        <option value="Social Media">Social Media</option>
+                        <option value="Music">Music Videos</option>
+                        <option value="Interview">Interviews</option>
+                        <option value="Corporate">Corporate</option>
+                        <option value="Event">Event Coverage</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>קישור וידאו (URL או YouTube) *</label>
+                    <input type="text" id="portfolioVideoUrl" placeholder="https://..." required>
+                </div>
+
+                <div class="form-group">
+                    <label>תמונת ווקטור (URL)</label>
+                    <input type="text" id="portfolioThumbnail" placeholder="https://...">
+                </div>
+
+                <div class="form-group">
+                    <label>משך (שניות)</label>
+                    <input type="number" id="portfolioDuration" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="portfolioFeatured">
+                        הצג בעמוד הבית (Featured)
+                    </label>
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="button" class="btn-cancel" onclick="closeModal('portfolioModal')">ביטול</button>
+                    <button type="submit" class="btn-save">שמור</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Carousel Modal -->
+    <div class="modal" id="carouselModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>הוסף פריט לקרוסלה</span>
+                <button class="modal-close" onclick="closeModal('carouselModal')">&times;</button>
+            </div>
+
+            <form id="carouselForm">
+                <div class="form-group">
+                    <label>כותרת *</label>
+                    <input type="text" id="carouselTitle" required>
+                </div>
+
+                <div class="form-group">
+                    <label>תיאור</label>
+                    <textarea id="carouselDescription"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>קישור תמונה (URL)</label>
+                    <input type="text" id="carouselImageUrl" placeholder="https://...">
+                </div>
+
+                <div class="form-group">
+                    <label>קישור וידאו (URL)</label>
+                    <input type="text" id="carouselVideoUrl" placeholder="https://...">
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="button" class="btn-cancel" onclick="closeModal('carouselModal')">ביטול</button>
+                    <button type="submit" class="btn-save">שמור</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Content Modal -->
+    <div class="modal" id="contentModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>ערוך תוכן</span>
+                <button class="modal-close" onclick="closeModal('contentModal')">&times;</button>
+            </div>
+
+            <form id="contentForm">
+                <div class="form-group">
+                    <label>כותרת</label>
+                    <input type="text" id="contentTitle">
+                </div>
+
+                <div class="form-group">
+                    <label>תיאור קטן</label>
+                    <input type="text" id="contentSubtitle">
+                </div>
+
+                <div class="form-group">
+                    <label>תיאור</label>
+                    <textarea id="contentDescription"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>טקסט כפתור</label>
+                    <input type="text" id="contentButtonText">
+                </div>
+
+                <div class="form-group">
+                    <label>קישור כפתור</label>
+                    <input type="text" id="contentButtonLink">
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="button" class="btn-cancel" onclick="closeModal('contentModal')">ביטול</button>
+                    <button type="submit" class="btn-save">שמור</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let currentEditId = null;
+        let currentSection = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupNavigation();
+            loadUserInfo();
+            loadPortfolios();
+            setupFormHandlers();
+        });
+
+        // Navigation
+        function setupNavigation() {
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    const section = this.dataset.section;
+                    if (!section) return;
+
+                    document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+
+                    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+                    document.querySelector(`[data-section="${section}"]`).classList.add('active');
+
+                    currentSection = section;
+                    if (section === 'portfolios') loadPortfolios();
+                    if (section === 'carousel') loadCarousel();
+                    if (section === 'content') loadContent();
+                });
+            });
+        }
+
+        // Load user info
+        async function loadUserInfo() {
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/user`, {credentials: 'include'});
+                const data = await response.json();
+                if (data.user) {
+                    document.getElementById('userInfo').textContent = `${data.user.username || data.user.email}`;
+                }
+            } catch (e) {
+                console.error('Error loading user:', e);
+            }
+        }
+
+        // Load portfolios
+        async function loadPortfolios() {
+            try {
+                const response = await fetch(`${API_BASE}/api/cms/portfolios`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const html = data.portfolios.map(p => `
+                        <tr>
+                            <td>${p.title}</td>
+                            <td>${p.category}</td>
+                            <td>${p.featured ? '⭐ Featured' : 'רגיל'}</td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="btn-edit" onclick="editPortfolio(${p.id})">ערוך</button>
+                                    <button class="btn-delete" onclick="deletePortfolio(${p.id})">מחק</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('');
+                    document.getElementById('portfolioTable').innerHTML = html || '<tr><td colspan="4" style="text-align:center">אין וידאו עדיין</td></tr>';
+                }
+            } catch (e) {
+                console.error('Error loading portfolios:', e);
+                showMessage('portfolioMessage', 'שגיאה בטעינה', 'error');
+            }
+        }
+
+        // Load carousel
+        async function loadCarousel() {
+            try {
+                const response = await fetch(`${API_BASE}/api/cms/carousel`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const html = data.carousel.map(item => `
+                        <tr>
+                            <td>${item.title}</td>
+                            <td>${item.order}</td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="btn-delete" onclick="deleteCarouselItem(${item.id})">מחק</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('');
+                    document.getElementById('carouselTable').innerHTML = html || '<tr><td colspan="3" style="text-align:center">אין פריטים</td></tr>';
+                }
+            } catch (e) {
+                console.error('Error loading carousel:', e);
+            }
+        }
+
+        // Load content
+        async function loadContent() {
+            try {
+                const response = await fetch(`${API_BASE}/api/cms/content`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const html = data.content.map(block => `
+                        <tr>
+                            <td>${block.section_name}</td>
+                            <td>${block.title || '-'}</td>
+                            <td>
+                                <button class="btn-edit" onclick="editContentBlock('${block.section_name}')">ערוך</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                    document.getElementById('contentTable').innerHTML = html || '<tr><td colspan="3" style="text-align:center">אין תוכנים</td></tr>';
+                }
+            } catch (e) {
+                console.error('Error loading content:', e);
+            }
+        }
+
+        // Modal functions
+        function openPortfolioModal() {
+            currentEditId = null;
+            document.getElementById('portfolioForm').reset();
+            document.getElementById('portfolioModalTitle').textContent = 'הוסף וידאו';
+            document.getElementById('portfolioModal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            currentEditId = null;
+        }
+
+        async function editPortfolio(id) {
+            currentEditId = id;
+            document.getElementById('portfolioModalTitle').textContent = 'ערוך וידאו';
+            document.getElementById('portfolioModal').classList.add('active');
+            // Load data would go here
+        }
+
+        async function deletePortfolio(id) {
+            if (!confirm('בטוח שברצונך למחוק?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/cms/portfolios/${id}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('portfolioMessage', 'וידאו מחוק בהצלחה', 'success');
+                    loadPortfolios();
+                } else {
+                    showMessage('portfolioMessage', data.error || 'שגיאה', 'error');
+                }
+            } catch (e) {
+                showMessage('portfolioMessage', 'שגיאה בשרת', 'error');
+            }
+        }
+
+        function deleteCarouselItem(id) {
+            if (!confirm('בטוח שברצונך למחוק?')) return;
+
+            fetch(`${API_BASE}/api/cms/carousel/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            }).then(r => r.json()).then(data => {
+                if (data.success) {
+                    showMessage('carouselMessage', 'פריט מחוק', 'success');
+                    loadCarousel();
+                }
+            });
+        }
+
+        function editContentBlock(sectionName) {
+            currentEditId = sectionName;
+            document.getElementById('contentModal').classList.add('active');
+            // Load content data here
+        }
+
+        function openCarouselModal() {
+            document.getElementById('carouselForm').reset();
+            document.getElementById('carouselModal').classList.add('active');
+        }
+
+        // Setup form handlers
+        function setupFormHandlers() {
+            document.getElementById('portfolioForm').addEventListener('submit', savePortfolio);
+            document.getElementById('carouselForm').addEventListener('submit', saveCarouselItem);
+            document.getElementById('contentForm').addEventListener('submit', saveContent);
+        }
+
+        async function savePortfolio(e) {
+            e.preventDefault();
+
+            const data = {
+                title: document.getElementById('portfolioTitle').value,
+                description: document.getElementById('portfolioDescription').value,
+                category: document.getElementById('portfolioCategory').value,
+                video_url: document.getElementById('portfolioVideoUrl').value,
+                thumbnail_url: document.getElementById('portfolioThumbnail').value,
+                duration: parseInt(document.getElementById('portfolioDuration').value) || 0,
+                featured: document.getElementById('portfolioFeatured').checked
+            };
+
+            try {
+                const method = currentEditId ? 'PUT' : 'POST';
+                const url = currentEditId ?
+                    `${API_BASE}/api/cms/portfolios/${currentEditId}` :
+                    `${API_BASE}/api/cms/portfolios`;
+
+                const response = await fetch(url, {
+                    method,
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showMessage('portfolioMessage', result.message, 'success');
+                    closeModal('portfolioModal');
+                    loadPortfolios();
+                } else {
+                    showMessage('portfolioMessage', result.error || 'שגיאה', 'error');
+                }
+            } catch (e) {
+                showMessage('portfolioMessage', 'שגיאה בשרת', 'error');
+            }
+        }
+
+        async function saveCarouselItem(e) {
+            e.preventDefault();
+
+            const data = {
+                title: document.getElementById('carouselTitle').value,
+                description: document.getElementById('carouselDescription').value,
+                image_url: document.getElementById('carouselImageUrl').value,
+                video_url: document.getElementById('carouselVideoUrl').value
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/api/cms/carousel`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showMessage('carouselMessage', 'פריט נוסף בהצלחה', 'success');
+                    closeModal('carouselModal');
+                    loadCarousel();
+                }
+            } catch (e) {
+                showMessage('carouselMessage', 'שגיאה בשרת', 'error');
+            }
+        }
+
+        async function saveContent(e) {
+            e.preventDefault();
+
+            const data = {
+                title: document.getElementById('contentTitle').value,
+                subtitle: document.getElementById('contentSubtitle').value,
+                description: document.getElementById('contentDescription').value,
+                button_text: document.getElementById('contentButtonText').value,
+                button_link: document.getElementById('contentButtonLink').value
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/api/cms/content/${currentEditId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showMessage('contentMessage', 'תוכן עודכן בהצלחה', 'success');
+                    closeModal('contentModal');
+                    loadContent();
+                }
+            } catch (e) {
+                showMessage('contentMessage', 'שגיאה בשרת', 'error');
+            }
+        }
+
+        function showMessage(elementId, text, type) {
+            const el = document.getElementById(elementId);
+            el.textContent = text;
+            el.className = `message ${type}`;
+            setTimeout(() => el.classList.remove(type), 4000);
+        }
+
+        async function logout() {
+            if (!confirm('בטוח?')) return;
+
+            try {
+                await fetch(`${API_BASE}/api/auth/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                window.location.href = '/';
+            } catch (e) {
+                console.error('Logout error:', e);
+            }
+        }
+
+        // Close modals on escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active'));
+            }
+        });
+    </script>
+</body>
+</html>
