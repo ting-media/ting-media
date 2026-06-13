@@ -21,7 +21,7 @@ from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor
 
 from config import Config
-from gemini_image_gen import generate_carousel_images
+from stable_diffusion_gen import generate_carousel_images
 
 logger = logging.getLogger(__name__)
 

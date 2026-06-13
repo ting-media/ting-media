@@ -443,6 +443,7 @@ let comments     = [];
 let currentFilter = 'open';
 let selectedVersionId = null;   // null = current
 let pendingTimecode   = null;
+let pendingParentId   = null;   // set when replying to a specific comment
 let eventSource       = null;
 let approved          = false;
 
@@ -719,8 +720,17 @@ function startComment() {
   setTimeout(() => document.getElementById('comment-input').focus(), 50);
 }
 
+function replyTo(commentId, timecode) {
+  pendingParentId = commentId;
+  pendingTimecode = timecode;
+  document.getElementById('comment-tc-tag').textContent = fmt(timecode) + ' (תגובה)';
+  document.getElementById('add-comment-bar').classList.add('visible');
+  document.getElementById('comment-input').focus();
+}
+
 function cancelComment() {
-  pendingTimecode = null;
+  pendingTimecode  = null;
+  pendingParentId  = null;
   document.getElementById('comment-input').value = '';
   document.getElementById('add-comment-bar').classList.remove('visible');
 }
@@ -745,6 +755,7 @@ async function submitComment() {
         text:        text,
         author_name: clientName,
         version_id:  selectedVersionId,
+        parent_id:   pendingParentId,
       })
     });
     if (!res.ok) throw new Error(await res.text());

@@ -105,7 +105,10 @@ def get_review_data(token: str, request: Request, version_id: Optional[str] = No
     signed_video_url = None
     if target_version and target_version.get("drive_file_id"):
         fid = target_version["drive_file_id"]
-        if not fid.startswith("direct:"):  # skip direct/blob URLs
+        if fid.startswith("direct:"):
+            # Direct URL — return as-is (no signing needed)
+            signed_video_url = fid[7:]
+        else:
             signed_video_url = signing.sign_video_url(fid, base)
 
     return {

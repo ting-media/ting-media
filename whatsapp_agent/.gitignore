@@ -1,0 +1,32 @@
+# Environment
+.env
+.env.local
+*.pyc
+__pycache__/
+*.egg-info/
+
+# Credentials
+gmail_credentials.json
+token.pickle
+
+# Database
+database/
+*.db
+*.sqlite
+
+# State
+state/
+sync_history.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

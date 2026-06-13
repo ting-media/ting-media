@@ -26,6 +26,8 @@ import db
 from signing import verify_signed_url
 from routes_team import router as team_router
 from routes_client import router as client_router
+from routes_agents import router as agents_router
+from routes_cs import router as cs_router
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -67,6 +69,8 @@ async def startup():
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(team_router)
 app.include_router(client_router)
+app.include_router(agents_router)
+app.include_router(cs_router)
 
 # ── Drive credential cache ─────────────────────────────────────────────────────
 _creds = None
@@ -115,15 +119,18 @@ async def stream_video(file_id: str, request: Request,
             raise HTTPException(status_code=403, detail="Expired or invalid video link")
 
     # Fetch file metadata
-    meta_resp = drive_get(
-        DRIVE_FILES_URL.format(file_id=file_id),
-        params={"fields": "name,mimeType,size,id"}
-    )
-    if meta_resp.status_code == 404:
-        raise HTTPException(status_code=404, detail="קובץ לא נמצא ב-Drive")
-    if meta_resp.status_code == 403:
-        raise HTTPException(status_code=403,
-            detail="גישה נדחתה — שתף את הקובץ עם Service Account")
+    try:
+        meta_resp = drive_get(
+            DRIVE_FILES_URL.format(file_id=file_id),
+            params={"fields": "name,mimeType,size,id"}
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    if meta_resp.status_code in (404, 403):
+        # SA doesn't have access — try public Drive download fallback
+        # (works for files set to "anyone with link can view")
+        log.info(f"SA access denied ({meta_resp.status_code}) for {file_id} — trying public fallback")
+        return await _stream_public_drive(file_id, request)
     if meta_resp.status_code != 200:
         raise HTTPException(status_code=meta_resp.status_code, detail="Drive API error")
 
@@ -218,3 +225,87 @@ def _extract_confirm_token(response) -> str | None:
         if key.startswith("download_warning"):
             return value
     return None
+
+
+async def _stream_public_drive(file_id: str, request: Request):
+    """
+    Fallback: proxy a publicly-shared Drive file (anyone with link can view).
+    Used when the Service Account doesn't have access to the file.
+    """
+    range_header = request.headers.get("Range")
+    req_headers = {"User-Agent": "Mozilla/5.0 (compatible; TING-Review/1.0)"}
+    if range_header:
+        req_headers["Range"] = range_header
+
+    # drive.usercontent.google.com is Google's newer, more reliable public download domain
+    pub_url = (
+        f"https://drive.usercontent.google.com/download"
+        f"?id={file_id}&export=download&confirm=t&authuser=0"
+    )
+
+    try:
+        resp = http.get(pub_url, stream=True, allow_redirects=True, timeout=30, headers=req_headers)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"שגיאת רשת: {e}")
+
+    ct = resp.headers.get("Content-Type", "")
+
+    # Google may return an HTML warning page for large files — extract confirm token
+    if "text/html" in ct and resp.status_code == 200:
+        html_bytes = b""
+        for chunk in resp.iter_content(4096):
+            html_bytes += chunk
+            if len(html_bytes) >= 65536:
+                break
+        resp.close()
+
+        m = re.search(rb'confirm=([0-9A-Za-z_\-]+)', html_bytes)
+        if not m:
+            raise HTTPException(
+                status_code=404,
+                detail="הקובץ לא נגיש — שתף אותו כ'כל מי שיש לו קישור'"
+            )
+        confirm = m.group(1).decode()
+        retry_url = (
+            f"https://drive.usercontent.google.com/download"
+            f"?id={file_id}&export=download&confirm={confirm}"
+        )
+        try:
+            resp = http.get(retry_url, stream=True, allow_redirects=True, timeout=30, headers=req_headers)
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"שגיאת רשת: {e}")
+        ct = resp.headers.get("Content-Type", "")
+
+    if resp.status_code not in (200, 206):
+        resp.close()
+        raise HTTPException(
+            status_code=404,
+            detail="הקובץ לא נגיש — שתף אותו כ'כל מי שיש לו קישור'"
+        )
+
+    # Build response headers
+    resp_headers = {"Accept-Ranges": "bytes"}
+    for h in ("Content-Range", "Content-Length", "Content-Disposition", "Content-Type"):
+        if h in resp.headers:
+            resp_headers[h] = resp.headers[h]
+    mime = resp_headers.get("Content-Type", "video/mp4")
+    if "text/html" in mime:
+        mime = "video/mp4"
+        resp_headers["Content-Type"] = mime
+
+    log.info(f"Public Drive fallback streaming: {file_id} ({ct})")
+
+    def gen():
+        try:
+            for chunk in resp.iter_content(chunk_size=CHUNK_SIZE):
+                if chunk:
+                    yield chunk
+        finally:
+            resp.close()
+
+    return StreamingResponse(
+        gen(),
+        status_code=resp.status_code,
+        headers=resp_headers,
+        media_type=mime,
+    )

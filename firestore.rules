@@ -1,0 +1,144 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // עזר — בדיקת תפקיד של המשתמש המחובר
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    function isOwnerOrAm() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+            || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'office'
+            || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'owner');
+    }
+    // אנטי-ספאם: תקרת גודל לתגובה (חוסם payloads ענקיים, לא פוגע בתגובות אמיתיות)
+    function validComment() {
+      return (!('text' in request.resource.data)
+              || (request.resource.data.text is string && request.resource.data.text.size() <= 5000))
+        && (!('authorName' in request.resource.data)
+              || (request.resource.data.authorName is string && request.resource.data.authorName.size() <= 200));
+    }
+
+    // פרופיל משתמש
+    // קריאה: עצמו או אדמין
+    // יצירה ראשונית: רק כדי להירשם בעצמו, חייב להגדיר role='office' או 'editor' (לא 'admin'/'finance')
+    // עדכון: עצמו יכול לעדכן רק שדות לא-קריטיים. רק אדמין יכול לשנות role/permissions/status
+    // מחיקה: רק אדמין
+    match /users/{userId} {
+      allow read:   if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // יצירה: רק אדמין יכול ליצור משתמשים חדשים
+      allow create: if isAdmin();
+      // עדכון: אדמין מנהל הכל. משתמש רגיל יכול לעדכן רק שדות לא-קריטיים בעצמו
+      allow update: if isAdmin()
+                    || (request.auth != null && request.auth.uid == userId
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['displayName','phone','linkedEmployeeId','updatedAt']));
+      allow delete: if isAdmin();
+    }
+
+    // משימות
+    match /tasks/{taskId} {
+      allow read:          if request.auth.uid == resource.data.userId;
+      allow create:        if request.auth.uid != null
+                           && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth.uid == resource.data.userId;
+    }
+
+    // לקוחות
+    match /clients/{clientId} {
+      allow read:          if request.auth.uid == resource.data.userId;
+      allow create:        if request.auth.uid != null
+                           && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth.uid == resource.data.userId;
+    }
+
+    // ספקים
+    match /suppliers/{supplierId} {
+      allow read:          if request.auth.uid == resource.data.userId;
+      allow create:        if request.auth.uid != null
+                           && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth.uid == resource.data.userId;
+    }
+
+    // פרויקטים
+    match /projects/{projectId} {
+      allow read:          if request.auth.uid == resource.data.userId;
+      allow create:        if request.auth.uid != null
+                           && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth.uid == resource.data.userId;
+    }
+
+    // עובדים
+    match /employees/{employeeId} {
+      allow read:          if request.auth.uid == resource.data.userId;
+      allow create:        if request.auth.uid != null
+                           && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth.uid == resource.data.userId;
+    }
+
+    // הוצאות
+    match /expenses/{expenseId} {
+      allow read:          if request.auth.uid == resource.data.userId;
+      allow create:        if request.auth.uid != null
+                           && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth.uid == resource.data.userId;
+    }
+
+    // סקירות וידאו - הבעלים מלא, עורך לסקירות שלו, הציבור קורא אם publicShare==true
+    match /videoReviews/{reviewId} {
+      allow read:   if (resource.data.publicShare == true)
+                    || (request.auth != null && request.auth.uid == resource.data.userId)
+                    || (request.auth != null && resource.data.editorId == request.auth.uid)
+                    || isOwnerOrAm();
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.userId;
+      // עדכון: הבעלים, מנהלת תיקים, אורח לסבב, או עורך שמעלה גרסה חדשה
+      allow update: if (request.auth != null && request.auth.uid == resource.data.userId)
+                    || isOwnerOrAm()
+                    || (request.auth != null && resource.data.editorId == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['versions','currentVersion','driveFileId','status','assignedTo']))
+                    || (resource.data.publicShare == true
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['currentRound','revisionRounds','lastRevisionAt','pendingRevision']));
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // הערות וידאו
+    match /videoComments/{commentId} {
+      // קריאה: בעלים, עורך הסקירה, מנהלת תיקים, או ציבור אם הסקירה משותפת
+      allow read:   if (request.auth != null
+                       && get(/databases/$(database)/documents/videoReviews/$(resource.data.reviewId)).data.userId == request.auth.uid)
+                    || (request.auth != null
+                       && get(/databases/$(database)/documents/videoReviews/$(resource.data.reviewId)).data.editorId == request.auth.uid)
+                    || isOwnerOrAm()
+                    || (get(/databases/$(database)/documents/videoReviews/$(resource.data.reviewId)).data.publicShare == true);
+      // יצירה: בעלים, מנהלת תיקים/אדמין, או אורח על סקירה משותפת
+      allow create: if validComment() && (
+                       (request.auth != null
+                       && request.resource.data.userId == request.auth.uid
+                       && get(/databases/$(database)/documents/videoReviews/$(request.resource.data.reviewId)).data.userId == request.auth.uid)
+                    || (request.auth != null
+                       && request.resource.data.userId == request.auth.uid
+                       && isOwnerOrAm())
+                    || (request.resource.data.guest == true
+                       && get(/databases/$(database)/documents/videoReviews/$(request.resource.data.reviewId)).data.publicShare == true
+                       && request.resource.data.resolved == false));
+      // עדכון: בעלים, מנהלת, או עורך שמסמן ✓ (resolved בלבד)
+      allow update: if (request.auth != null
+                        && get(/databases/$(database)/documents/videoReviews/$(resource.data.reviewId)).data.userId == request.auth.uid)
+                    || isOwnerOrAm()
+                    || (request.auth != null
+                        && get(/databases/$(database)/documents/videoReviews/$(resource.data.reviewId)).data.editorId == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['resolved']));
+      allow delete: if (request.auth != null
+                    && get(/databases/$(database)/documents/videoReviews/$(resource.data.reviewId)).data.userId == request.auth.uid)
+                    || isOwnerOrAm();
+    }
+
+  }
+}

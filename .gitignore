@@ -9,3 +9,29 @@ carousel_tool/state/
 carousel_tool/output/
 carousel_tool/.claude/
 copywriting_agent/
+
+# Dev tooling & temp files
+__pycache__/
+*.pyc
+.claude/
+.claude-plugin/
+designer-skills/
+extracted_code_output.txt
+install-designer-skills.ps1
+*.docx
+*.backup-*
+.firebase/
+index.html.backup-*
+
+# Security — keys & secrets (never commit) — added by appsec scan
+ting_deploy_key
+ting_deploy_key.pub
+*_deploy_key
+*.pem
+*.key
+*.p12
+service-account*.json
+**/service-account.json
+.ting-drive/
+*.env
+.env.*

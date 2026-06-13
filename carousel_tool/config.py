@@ -33,6 +33,10 @@ class Config:
         return cls.get("GEMINI_API_KEY")
 
     @classmethod
+    def stable_diffusion_api_key(cls) -> str:
+        return cls.get("STABLE_DIFFUSION_API_KEY")
+
+    @classmethod
     def google_service_account_path(cls) -> str:
         return cls.get("GOOGLE_SERVICE_ACCOUNT_KEY_PATH")
 

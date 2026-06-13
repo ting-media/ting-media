@@ -50,6 +50,15 @@ class ShareBody(BaseModel):
 class PatchCommentBody(BaseModel):
     resolved: Optional[bool] = None
 
+class AddTeamCommentBody(BaseModel):
+    timecode:        float
+    text:            str
+    author_name:     str = "צוות"
+    author_type:     str = "team"
+    parent_id:       Optional[str] = None
+    annotation_json: Optional[str] = None
+    version_id:      Optional[str] = None
+
 
 # ── Reviews ───────────────────────────────────────────────────────────────────
 
@@ -148,6 +157,31 @@ def get_comments(review_id: str, version_id: Optional[str] = None,
                  x_team_token: Optional[str] = Header(None)):
     require_team(x_team_token)
     return db.list_comments(review_id, version_id=version_id)
+
+
+@router.post("/reviews/{review_id}/comments", status_code=201)
+def add_team_comment(review_id: str, body: AddTeamCommentBody,
+                     x_team_token: Optional[str] = Header(None)):
+    require_team(x_team_token)
+    review = db.get_review(review_id)
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+    # Resolve current version if not specified
+    version_id = body.version_id
+    if not version_id:
+        cv = db.get_current_version(review_id)
+        version_id = cv["id"] if cv else None
+    return db.add_comment(
+        review_id=review_id,
+        timecode=body.timecode,
+        text=body.text,
+        author_name=body.author_name,
+        author_type=body.author_type,
+        version_id=version_id,
+        round_num=review.get("current_round", 1),
+        parent_id=body.parent_id,
+        annotation_json=body.annotation_json,
+    )
 
 
 @router.patch("/comments/{comment_id}")

@@ -297,9 +297,11 @@ def validate_token(token: str) -> dict | None:
             if datetime.fromisoformat(d["expires_at"]) < datetime.now(timezone.utc):
                 return None
         # Update last_seen
+        ts = now_iso()
         conn.execute(
-            "UPDATE review_tokens SET last_seen_at=? WHERE token=?", (now_iso(), token)
+            "UPDATE review_tokens SET last_seen_at=? WHERE token=?", (ts, token)
         )
+        d["last_seen_at"] = ts   # reflect update in the returned dict
         return d
 
 

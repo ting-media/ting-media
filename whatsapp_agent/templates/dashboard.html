@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>סוכן WhatsApp + Gmail</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🤖 סוכן ניהול צ'ט וקבלות</h1>
+            <p class="subtitle">WhatsApp + Gmail Management</p>
+        </header>
+
+        <div class="dashboard">
+            <!-- Sync Control -->
+            <div class="card sync-control">
+                <h2>🔄 סנכרון</h2>
+                <button id="syncBtn" class="btn btn-primary">הפעל סנכרון עכשיו</button>
+                <div id="syncStatus" class="status-message"></div>
+            </div>
+
+            <!-- Statistics -->
+            <div class="stats-grid">
+                <div class="card stat-card">
+                    <h3>📱 הודעות WhatsApp</h3>
+                    <div class="stat-value" id="waMessageCount">0</div>
+                    <p class="stat-label">בשעה האחרונה</p>
+                </div>
+
+                <div class="card stat-card">
+                    <h3>📧 הודעות Gmail</h3>
+                    <div class="stat-value" id="gmailMessageCount">0</div>
+                    <p class="stat-label">בשעה האחרונה</p>
+                </div>
+
+                <div class="card stat-card">
+                    <h3>📋 משימות פתוחות</h3>
+                    <div class="stat-value" id="openTaskCount">0</div>
+                    <p class="stat-label">סה"כ</p>
+                </div>
+
+                <div class="card stat-card">
+                    <h3>🔗 משימות מקושרות</h3>
+                    <div class="stat-value" id="linkedTaskCount">0</div>
+                    <p class="stat-label">בין פלטפורמות</p>
+                </div>
+            </div>
+
+            <!-- Tasks Section -->
+            <div class="card">
+                <h2>📝 משימות פתוחות</h2>
+                <div id="tasksList" class="tasks-list">
+                    <p class="loading">טוען...</p>
+                </div>
+            </div>
+
+            <!-- Recent Messages -->
+            <div class="card">
+                <h2>💬 הודעות אחרונות</h2>
+                <div id="messagesList" class="messages-list">
+                    <p class="loading">טוען...</p>
+                </div>
+            </div>
+
+            <!-- Analytics -->
+            <div class="card">
+                <h2>📊 סטטיסטיקות</h2>
+                <div id="analyticsList" class="analytics-list">
+                    <p class="loading">טוען...</p>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="card">
+                <h2>📈 סיכום אחרון</h2>
+                <div id="summaryText" class="summary-text">
+                    <p class="loading">טוען...</p>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>עדכון אחרון: <span id="lastUpdate">-</span></p>
+            <p>סוכן WhatsApp + Gmail v1.0</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "firestore.rules",
+      "*.md",
+      ".firebaserc",
+      "copywriting_agent/**",
+      "**/.*",
+      "**/node_modules/**",
+      "**/*.exe",
+      "**/*.dll",
+      "**/*.bat",
+      "**/*.cmd",
+      "**/*.ps1",
+      "**/*.sh",
+      "**/*.so",
+      "**/*.dylib",
+      "**/*.bin",
+      "**/*.msi",
+      "**/*.zip",
+      "**/*.tar",
+      "**/*.gz",
+      "**/*.7z",
+      "**/*.py",
+      "**/*.pyc",
+      "**/__pycache__/**",
+      "**/.venv/**",
+      "**/venv/**",
+      "**/node-v*/**",
+      "**/.git/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/admin",
+        "destination": "/admin.html"
+      },
+      {
+        "source": "/login",
+        "destination": "/login.html"
+      },
+      {
+        "source": "/r/**",
+        "destination": "/review.html"
+      },
+      {
+        "source": "/review",
+        "destination": "/review.html"
+      },
+      {
+        "source": "/editor",
+        "destination": "/editor.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**/*.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}
